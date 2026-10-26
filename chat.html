@@ -4,38 +4,126 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>чат голдишечки 💗</title>
+<title>💗 чат голдишечки</title>
 <style>
-body{background:#17121d;color:white;font-family:Arial,sans-serif;margin:0;padding:20px}
-main{max-width:500px;margin:auto}
-h1{color:#ff8acb;text-align:center}
-#messages{background:#251c2d;border-radius:15px;padding:12px;min-height:250px;overflow-wrap:anywhere}
-.msg{background:#39283f;padding:10px;border-radius:10px;margin:8px 0}
-input,button{box-sizing:border-box;width:100%;padding:13px;margin-top:10px;border:0;border-radius:10px;font-size:16px}
-button{background:#ff65b4;color:white;font-weight:bold}
-small{color:#cbb9ce}
+body {
+  font-family: Arial, sans-serif;
+  background: #ffe8f1;
+  color: #8b2855;
+  max-width: 520px;
+  margin: 30px auto;
+  padding: 16px;
+}
+h1 { text-align: center; }
+input, button {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 13px;
+  margin: 6px 0;
+  border: 1px solid #f1a6c7;
+  border-radius: 12px;
+  font-size: 16px;
+}
+button {
+  background: #ec6da5;
+  color: white;
+  border: 0;
+}
+#messages {
+  background: white;
+  border-radius: 12px;
+  padding: 12px;
+  min-height: 180px;
+  overflow-wrap: anywhere;
+}
+.msg {
+  background: #fff0f6;
+  padding: 10px;
+  border-radius: 10px;
+  margin: 8px 0;
+}
+#status { font-size: 13px; text-align: center; }
 </style>
 </head>
 <body>
-<main>
 <h1>💗 чат голдишечки 💗</h1>
-<div id="messages"><p>Наш чат скоро заработает! 💕</p></div>
-<input id="name" placeholder="Твоё имя" maxlength="30">
-<input id="text" placeholder="Сообщение" maxlength="500">
+<div id="status">Подключаемся...</div>
+<div id="messages">Загружаем сообщения...</div>
+
+<input id="name" maxlength="30" placeholder="Твоё имя">
+<input id="content" maxlength="1000" placeholder="Сообщение">
 <button id="send">Отправить 💗</button>
-<p><small>Это пробная страница. Пока сообщения не передаются другому человеку.</small></p>
-</main>
+
 <script>
-document.getElementById('send').onclick=()=>{
- const n=document.getElementById('name').value.trim();
- const t=document.getElementById('text').value.trim();
- if(!n||!t){alert('Напиши имя и сообщение!');return}
- const m=document.createElement('div');
- m.className='msg';
- m.textContent=n+': '+t;
- document.getElementById('messages').appendChild(m);
- document.getElementById('text').value='';
+const URL_BASE = 'https://bkzvoktchnxidoeaklca.supabase.co';
+const API_KEY = 'sb_publishable_KiTpU3ATB2S7g4YCtac2fw_34-spY_p';
+
+const headers = {
+  apikey: API_KEY,
+  Authorization: 'Bearer ' + API_KEY,
+  'Content-Type': 'application/json'
 };
+
+const box = document.getElementById('messages');
+const status = document.getElementById('status');
+
+async function loadMessages() {
+  try {
+    const r = await fetch(
+      URL_BASE + '/rest/v1/messages?select=id,name,content,created_at&order=created_at.asc&limit=100',
+      { headers }
+    );
+    if (!r.ok) throw new Error(await r.text());
+
+    const data = await r.json();
+    box.replaceChildren();
+
+    data.forEach(m => {
+      const item = document.createElement('div');
+      item.className = 'msg';
+      const author = document.createElement('b');
+      author.textContent = m.name + ': ';
+      const text = document.createElement('span');
+      text.textContent = m.content;
+      item.append(author, text);
+      box.append(item);
+    });
+
+    box.scrollTop = box.scrollHeight;
+    status.textContent = '💗 Чат подключён';
+  } catch (e) {
+    status.textContent = 'Ошибка подключения. Проверь таблицу и права доступа.';
+  }
+}
+
+document.getElementById('send').onclick = async () => {
+  const name = document.getElementById('name').value.trim();
+  const content = document.getElementById('content').value.trim();
+
+  if (!name || !content) {
+    status.textContent = 'Введи имя и сообщение 💗';
+    return;
+  }
+
+  try {
+    status.textContent = 'Отправляем...';
+    const r = await fetch(URL_BASE + '/rest/v1/messages', {
+      method: 'POST',
+      headers: { ...headers, Prefer: 'return=minimal' },
+      body: JSON.stringify({ name, content })
+    });
+
+    if (!r.ok) throw new Error(await r.text());
+
+    document.getElementById('content').value = '';
+    await loadMessages();
+  } catch (e) {
+    status.textContent = 'Не отправилось: проверь настройки базы.';
+  }
+};
+
+loadMessages();
+setInterval(loadMessages, 3000);
 </script>
 </body>
 </html>
