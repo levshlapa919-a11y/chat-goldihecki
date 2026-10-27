@@ -1,205 +1,78 @@
 <!doctype html>
-<html lang="ru">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Голдичечки 💗</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-*{box-sizing:border-box}body{margin:0;background:#fff0f6;color:#69324f;font:16px system-ui}main{max-width:600px;margin:auto;padding:18px}h1{text-align:center;color:#d94d91}.card{background:white;padding:18px;border-radius:20px;margin:14px 0;box-shadow:0 5px 24px #a54c7618}input,button{width:100%;padding:13px;margin:6px 0;border-radius:12px;font:inherit}input{border:1px solid #e8b8d0}button{border:0;background:#df5597;color:white;font-weight:700}.alt{background:#f8dfec;color:#69324f}#messages{height:45vh;min-height:240px;overflow:auto;background:#fff7fb;padding:10px;border-radius:12px}.msg{background:#f8e1ed;padding:10px;margin:8px 0;border-radius:12px;overflow-wrap:anywhere}.hidden{display:none}small{color:#966e83}
-</style>
-</head>
-<body><main>
-<h1>💗 Чат Голдичечки 💗</h1>
-<section class="card" id="auth">
-<h3>Войти или зарегистрироваться</h3>
-<input id="email" type="email" autocomplete="email" placeholder="Электронная почта">
-<input id="password" type="password" autocomplete="current-password" placeholder="Пароль">
-<button id="login" type="button">Войти</button>
-<button class="alt" id="signup" type="button">Регистрация</button>
-<p id="authStatus" role="status" aria-live="polite"></p>
-</section>
-<section class="card hidden" id="chat">
-<p id="welcome"></p><button class="alt" id="logout" type="button">Выйти</button>
-<div id="messages"></div>
-<input id="message" maxlength="1000" placeholder="Твоё сообщение…">
-<button id="send" type="button">Отправить 💗</button><p id="status" role="status" aria-live="polite"></p>
-</section></main>
-<script>
-(() => {
-  const SUPABASE_URL = 'https://bkzvoktchhnxidoeaklca.supabase.co';
-  const SUPABASE_KEY = 'sb_publishable_KiTpU3ATB2S7g4YCtac2fw_34-spY_p';
-  const $ = id => document.getElementById(id);
-  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  let user = null;
-  let timer = null;
-  let enterPromise = null;
-  let refreshBusy = false;
 
-  function status(id, message) { $(id).textContent = message; }
-  function showAuth() {
-    $('auth').classList.remove('hidden');
-    $('chat').classList.add('hidden');
-    clearInterval(timer);
-    timer = null;
-  }
-  function showChat() {
-    $('auth').classList.add('hidden');
-    $('chat').classList.remove('hidden');
-    $('welcome').textContent = 'Ты вошёл: ' + (user?.email || 'аккаунт');
-  }
-
-  async function refresh() {
-    if (!user || refreshBusy) return;
-    refreshBusy = true;
-    try {
-      status('status', 'Загружаем сообщения…');
-      const { data, error } = await db.from('messages')
-        .select('id,name,content,created_at')
-        .order('created_at', { ascending: true })
-        .limit(100);
-      if (error) {
-        status('status', 'Вход работает, но чат не загрузился: ' + error.message);
-        return;
-      }
-      const fragment = document.createDocumentFragment();
-      for (const m of (data || [])) {
-        const div = document.createElement('div');
-        div.className = 'msg';
-        const b = document.createElement('b');
-        b.textContent = (m.name || 'Гость') + ' ';
-        const t = document.createElement('span');
-        t.textContent = m.content || '';
-        const time = document.createElement('small');
-        time.textContent = m.created_at ? ' · ' + new Date(m.created_at).toLocaleTimeString() : '';
-        div.append(b, t, time);
-        fragment.append(div);
-      }
-      $('messages').replaceChildren(fragment);
-      $('messages').scrollTop = $('messages').scrollHeight;
-      status('status', 'Чат подключён 💗');
-    } catch (err) {
-      status('status', 'Ошибка подключения к чату: ' + (err?.message || String(err)));
-    } finally {
-      refreshBusy = false;
-    }
-  }
-
-  async function enter() {
-    if (enterPromise) return enterPromise;
-    enterPromise = (async () => {
-      try {
-        const { data, error } = await db.auth.getSession();
-        if (error) throw error;
-        user = data.session?.user || null;
-        if (user) {
-          showChat();
-          await refresh();
-          if (!timer) timer = setInterval(refresh, 6000);
-        } else {
-          showAuth();
-        }
-      } catch (err) {
-        showAuth();
-        status('authStatus', 'Не удалось подключиться к Supabase: ' + (err?.message || String(err)));
-      }
-    })();
-    try { await enterPromise; } finally { enterPromise = null; }
-  }
-
-  async function auth(action) {
-    const email = $('email').value.trim();
-    const password = $('password').value;
-    if (!email || !password) {
-      status('authStatus', 'Введи почту и пароль.');
-      return;
-    }
-    if (!window.supabase) {
-      status('authStatus', 'Не загрузилась библиотека Supabase. Обнови страницу и попробуй ещё раз.');
-      return;
-    }
-    $('login').disabled = true;
-    $('signup').disabled = true;
-    status('authStatus', action === 'signUp' ? 'Регистрируем…' : 'Выполняем вход…');
-    try {
-      const { data, error } = await db.auth[action]({ email, password });
-      if (error) {
-        status('authStatus', error.message);
-        return;
-      }
-      if (data?.session) {
-        status('authStatus', 'Вход выполнен. Загружаем чат…');
-        await enter();
-      } else if (action === 'signUp') {
-        status('authStatus', 'Аккаунт создан. Если включено подтверждение почты, проверь почту и подтверди адрес, затем войди.');
-      } else {
-        status('authStatus', 'Вход выполнен.');
-        await enter();
-      }
-    } catch (err) {
-      status('authStatus', 'Ошибка: ' + (err?.message || String(err)));
-    } finally {
-      $('login').disabled = false;
-      $('signup').disabled = false;
-    }
-  }
-
-  $('login').addEventListener('click', () => auth('signInWithPassword'));
-  $('signup').addEventListener('click', () => auth('signUp'));
-  $('logout').addEventListener('click', async () => {
-    status('authStatus', 'Выходим…');
-    const { error } = await db.auth.signOut();
-    if (error) status('status', 'Ошибка выхода: ' + error.message);
-    user = null;
-    showAuth();
-    status('authStatus', error ? error.message : 'Ты вышел из аккаунта.');
-  });
-  $('send').addEventListener('click', async () => {
-    if (!user) return;
-    const content = $('message').value.trim();
-    if (!content) return;
-    $('send').disabled = true;
-    const name = (user.email || 'Гость').split('@')[0].slice(0, 30);
-    try {
-      const { error } = await db.from('messages').insert({ name, content });
-      if (error) {
-        status('status', 'Ошибка отправки: ' + error.message);
-        return;
-      }
-      $('message').value = '';
-      await refresh();
-    } catch (err) {
-      status('status', 'Ошибка отправки: ' + (err?.message || String(err)));
-    } finally {
-      $('send').disabled = false;
-    }
-  });
-  $('message').addEventListener('keydown', e => {
-    if (e.key === 'Enter') $('send').click();
-  });
-
-  db.auth.onAuthStateChange((event, session) => {
-    // Defer work so Supabase auth callbacks are not blocked by another auth request.
-    setTimeout(() => {
-      user = session?.user || null;
-      if (user) {
-        showChat();
-        refresh();
-        if (!timer) timer = setInterval(refresh, 6000);
-      } else if (event !== 'INITIAL_SESSION') {
-        showAuth();
-      }
-    }, 0);
-  });
-
-  if (!window.supabase) {
-    showAuth();
-    status('authStatus', 'Не загрузилась библиотека Supabase. Проверь подключение к интернету и обнови страницу.');
-  } else {
-    status('authStatus', 'Подключаемся…');
-    enter();
-  }
-})();
-</script>
-</body>
-</html>
+<html lang="ru">  
+<head>  
+<meta charset="utf-8">  
+<meta name="viewport" content="width=device-width,initial-scale=1">  
+<title>Голдичечки 💗</title>  
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>  
+<style>  
+*{box-sizing:border-box}body{margin:0;background:#fff0f6;color:#69324f;font:16px system-ui}main{max-width:600px;margin:auto;padding:18px}h1{text-align:center;color:#d94d91}.card{background:white;padding:18px;border-radius:20px;margin:14px 0;box-shadow:0 5px 24px #a54c7618}input,button{width:100%;padding:13px;margin:6px 0;border-radius:12px;font:inherit}input{border:1px solid #e8b8d0}button{border:0;background:#df5597;color:white;font-weight:700}.alt{background:#f8dfec;color:#69324f}#messages{height:45vh;min-height:240px;overflow:auto;background:#fff7fb;padding:10px;border-radius:12px}.msg{background:#f8e1ed;padding:10px;margin:8px 0;border-radius:12px;overflow-wrap:anywhere}.hidden{display:none}small{color:#966e83}  
+</style>  
+</head>  
+<body><main>  
+<h1>💗 Чат Голдичечки 💗</h1>  
+<section class="card" id="auth">  
+<h3>Войти или зарегистрироваться</h3>  
+<input id="email" type="email" placeholder="Электронная почта">  
+<input id="password" type="password" placeholder="Пароль">  
+<button id="login">Войти</button>  
+<button class="alt" id="signup">Регистрация</button>  
+<p id="authStatus"></p>  
+</section>  
+<section class="card hidden" id="chat">  
+<p id="welcome"></p><button class="alt" id="logout">Выйти</button>  
+<div id="messages"></div>  
+<input id="message" maxlength="1000" placeholder="Твоё сообщение…">  
+<button id="send">Отправить 💗</button><p id="status"></p>  
+</section></main>  
+<script>  
+const db=supabase.createClient('https://bkzvoktchnxidoeaklca.supabase.co','sb_publishable_KiTpU3ATB2S7g4YCtac2fw_34-spY_p');  
+const $=id=>document.getElementById(id);  
+let user=null,timer=null;  
+function status(id,s){$(id).textContent=s}  
+async function refresh(){  
+const {data,error}=await db.from('messages').select('id,name,content,created_at').order('created_at',{ascending:true}).limit(100);  
+if(error){status('status','Ошибка загрузки: '+error.message);return}  
+$('messages').replaceChildren();  
+for(const m of data||[]){  
+  const div=document.createElement('div');div.className='msg';  
+  const b=document.createElement('b');b.textContent=m.name+' ';  
+  const t=document.createElement('span');t.textContent=m.content;  
+  const time=document.createElement('small');time.textContent=' · '+new Date(m.created_at).toLocaleTimeString();  
+  div.append(b,t,time);$('messages').append(div);  
+}  
+$('messages').scrollTop=$('messages').scrollHeight;status('status','Чат подключён 💗');  
+}  
+async function enter(){  
+const {data}=await db.auth.getSession();user=data.session?.user||null;  
+$('auth').classList.toggle('hidden',!!user);$('chat').classList.toggle('hidden',!user);  
+if(user){$('welcome').textContent='Ты вошёл: '+user.email;await refresh();clearInterval(timer);timer=setInterval(refresh,4000)}  
+else{clearInterval(timer)}  
+}  
+async function auth(action){  
+const email=$('email').value.trim(),password=$('password').value;  
+if(!email||!password){status('authStatus','Введи почту и пароль.');return}  
+status('authStatus','Подожди…');  
+const {error}=await db.auth[action]({email,password});  
+status('authStatus',error?error.message:'Готово! Если попросит подтверждение, проверь почту.');  
+await enter();  
+}  
+$('login').onclick=()=>auth('signInWithPassword');  
+$('signup').onclick=()=>auth('signUp');  
+$('logout').onclick=async()=>{await db.auth.signOut();await enter()};  
+$('send').onclick=async()=>{  
+if(!user)return;  
+const content=$('message').value.trim();if(!content)return;  
+$('send').disabled=true;  
+const name=(user.email||'Гость').split('@')[0].slice(0,30);  
+const {error}=await db.from('messages').insert({name,content});  
+$('send').disabled=false;  
+if(error){status('status','Ошибка отправки: '+error.message);return}  
+$('message').value='';await refresh();  
+};  
+$('message').addEventListener('keydown',e=>{if(e.key==='Enter')$('send').click()});  
+db.auth.onAuthStateChange(()=>setTimeout(enter,0));  
+enter();  
+</script>  
+</body></html>
