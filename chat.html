@@ -1,268 +1,469 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#101114">
-<title>Чат Голдичечки</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Goldihecki — личные чаты</title>
 <style>
-:root{color-scheme:dark;--bg:#101114;--panel:#191a20;--panel2:#22232a;--gold:#e4bd68;--text:#f4f1e9;--muted:#9b9ba5;--line:#34343d}
+:root{color-scheme:dark;--bg:#0d0e10;--panel:#181a1e;--line:#33353a;--gold:#e5bd58;--text:#f4f1e8;--muted:#a5a6ab}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,Arial,sans-serif;min-height:100vh}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,sans-serif}
 button,input,textarea{font:inherit}
 button{cursor:pointer}
-button:disabled{opacity:.5;cursor:wait}
-.shell{max-width:980px;margin:auto;padding:24px 16px 50px}
-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0 24px;border-bottom:1px solid var(--line);margin-bottom:24px}
-.brand{display:flex;align-items:center;gap:12px}
-.logo{display:grid;place-items:center;width:46px;height:46px;border:1px solid #8f7138;border-radius:13px;color:var(--gold);font-weight:900;font-size:23px}
-.brand h1{font-size:20px;margin:0}
-.brand p{margin:2px 0 0;color:var(--muted);font-size:12px}
-.pill{border:1px solid #5b4a2d;color:var(--gold);border-radius:30px;padding:6px 11px;font-size:12px}
-.layout{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:18px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;min-width:0;margin-bottom:16px}
-h2{font-size:18px;margin:0 0 8px}
-.sub{color:var(--muted);margin:0 0 20px;font-size:13px}
-.field{margin:14px 0}
-label{display:block;color:#c7c5c0;font-size:13px;margin-bottom:7px}
-input,textarea{width:100%;border:1px solid var(--line);border-radius:11px;background:#111216;color:var(--text);padding:13px;outline:none}
-input:focus,textarea:focus{border-color:var(--gold)}
-textarea{resize:vertical;min-height:52px;max-height:180px}
-.btn{border:0;border-radius:11px;padding:12px 16px;background:var(--gold);color:#17130b;font-weight:750}
-.btn.secondary{background:var(--panel2);border:1px solid var(--line);color:var(--text)}
-.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}
-.actions .btn{flex:1}
 .hidden{display:none!important}
-#status{padding:12px 14px;border-radius:10px;background:#202127;color:#d5d2ca;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;margin-top:18px}
-#status.error{color:#ff9292;border:1px solid #65383b}
-#status.success{color:var(--gold)}
-.chathead{display:flex;justify-content:space-between;align-items:center;gap:12px}
-#messages{margin:18px 0;display:flex;flex-direction:column;gap:10px;min-height:140px;max-height:48vh;overflow:auto;padding:4px}
-.msg{padding:12px 14px;background:var(--panel2);border:1px solid #30313a;border-radius:12px;overflow-wrap:anywhere}
-.msg b{color:var(--gold);font-size:13px}
-.msg .body{margin-top:5px;white-space:pre-wrap}
-.msg time{display:block;margin-top:7px;color:var(--muted);font-size:11px}
-.composer{display:flex;gap:9px}
-.composer textarea{flex:1;min-width:0}
-.side{display:flex;flex-direction:column;gap:0}
-.stat{padding:13px 0;border-bottom:1px solid var(--line)}
-.stat strong{display:block;color:var(--gold);font-size:17px}
-.stat span{color:var(--muted);font-size:12px}
-.admin{border-color:#6e5935}
-.admin h2{color:var(--gold)}
-.foot{text-align:center;color:#696a74;font-size:12px;margin-top:24px}
-@media(max-width:700px){.layout{grid-template-columns:1fr}.shell{padding:12px}.card{padding:17px}header{padding:10px 0 18px}.brand h1{font-size:17px}#messages{max-height:45vh}}
-@media(max-width:390px){.pill{font-size:10px;padding:5px 7px}.composer{flex-direction:column}.composer button{width:100%}}
+.gold{color:var(--gold)}
+.muted{color:var(--muted)}
+.btn{border:1px solid var(--line);border-radius:10px;padding:10px 13px;background:#25272c;color:var(--text)}
+.btnGold{background:var(--gold);color:#17140a;border-color:var(--gold);font-weight:700}
+.btnDanger{background:#421f22;color:#ffc2c2}
+.field,.search{width:100%;border:1px solid var(--line);background:#101114;color:var(--text);border-radius:10px;padding:12px;outline:none}
+.field:focus,.search:focus{border-color:var(--gold)}
+.wrap{min-height:100dvh;display:grid;place-items:center;padding:16px}
+.auth{width:min(420px,100%);background:var(--panel);border:1px solid #504329;border-radius:20px;padding:25px}
+h1{font-size:22px;margin:0 0 4px}
+label{display:block;margin:13px 0 5px;font-size:13px}
+.tabs{display:flex;gap:8px;margin:20px 0}
+.tabs button{flex:1}
+.notice{margin-top:12px;color:var(--muted);font-size:12px;white-space:pre-wrap}
+.error{color:#ff9292!important}
+.app{height:100dvh;max-width:1500px;margin:auto;padding:12px;display:grid;grid-template-columns:290px minmax(0,1fr);gap:12px}
+.side,.main{min-height:0;background:var(--panel);border:1px solid var(--line);border-radius:15px;overflow:hidden}
+.side{display:flex;flex-direction:column}
+.sideHead{padding:16px;border-bottom:1px solid var(--line)}
+.sideTools{padding:12px;display:grid;gap:9px}
+.people{overflow:auto;flex:1;padding:8px}
+.person{display:flex;align-items:center;gap:10px;text-align:left;width:100%;padding:12px;background:transparent;color:var(--text);border:1px solid transparent;border-radius:10px;margin-bottom:5px}
+.person:hover,.person.active{background:#302a1c;border-color:#69562a}
+.avatar{width:38px;height:38px;flex:0 0 38px;border-radius:50%;display:grid;place-items:center;background:#665126;color:#ffe5a1;font-weight:bold}
+.personText{min-width:0}
+.personName{font-weight:700;overflow-wrap:anywhere}
+.personSub{font-size:11px;color:var(--muted)}
+.sideFoot{display:flex;gap:8px;flex-wrap:wrap;padding:10px;border-top:1px solid var(--line)}
+.main{display:flex;flex-direction:column}
+.mainTop{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px;border-bottom:1px solid var(--line)}
+.mainTop h2{font-size:16px;margin:0}
+.chatIdentity{display:flex;align-items:center;gap:10px;min-width:0}
+.messages{flex:1;min-height:0;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:12px}
+.empty{margin:auto;text-align:center;color:var(--muted);padding:20px}
+.msg{max-width:80%;align-self:flex-start}
+.msg.mine{align-self:flex-end}
+.bubble{padding:11px 14px;border:1px solid #3c3e43;border-radius:14px;background:#26282d;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.mine .bubble{background:#3a301c;border-color:#69552b}
+.msgMeta{font-size:10px;color:var(--muted);margin-top:4px}
+.deleteMsg{background:none;color:#ff9999;border:0;text-decoration:underline}
+.composer{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line)}
+.composer textarea{resize:vertical;min-height:44px;max-height:140px;flex:1}
+.connection{font-size:10px;color:var(--muted);padding:7px 10px;border-top:1px solid var(--line);overflow-wrap:anywhere}
+.online{color:#79d7a4}.offline{color:#ff9292}
+.modalBack{position:fixed;inset:0;background:#000c;display:grid;place-items:center;padding:12px;z-index:5}
+.modal{width:min(680px,100%);max-height:90dvh;overflow:auto;background:var(--panel);border:1px solid #65532b;border-radius:15px;padding:16px}
+.modalHead{display:flex;justify-content:space-between;align-items:center}
+.adminList{display:grid;gap:9px;margin-top:12px}
+.adminUser{padding:12px;border:1px solid var(--line);border-radius:10px}
+.adminUser .actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.adminUser .btn{font-size:12px}
+.toast{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:#302a1c;padding:12px;border:1px solid var(--gold);border-radius:10px;z-index:10;max-width:90vw}
+@media(max-width:700px){
+.app{padding:0;gap:0;grid-template-columns:1fr;height:100dvh}
+.side,.main{border-radius:0;border-left:0;border-right:0}
+.main{display:none}
+.app.inChat .side{display:none}
+.app.inChat .main{display:flex}
+.mobileBack{display:inline-block!important}
+.messages{padding:12px}
+.msg{max-width:90%}
+}
 </style>
 </head>
 <body>
-<div class="shell">
-<header>
-  <div class="brand">
-    <div class="logo">G</div>
-    <div><h1>Чат Голдичечки</h1><p>ПРИВАТНОЕ ПРОСТРАНСТВО</p></div>
-  </div>
-  <span class="pill">GOLD EDITION</span>
-</header>
+<div id="authScreen" class="wrap">
+<section class="auth">
+<h1>Goldihecki <span class="gold">DM</span></h1>
+<p class="muted">Личные чаты · чёрный и золотой</p>
+<div class="tabs">
+<button id="loginTab" class="btn btnGold" type="button">Войти</button>
+<button id="signupTab" class="btn" type="button">Регистрация</button>
+</div>
+<form id="authForm">
+<label for="email">Электронная почта</label>
+<input id="email" class="field" type="email" autocomplete="email" required>
+<label for="password">Пароль</label>
+<input id="password" class="field" type="password" minlength="6" required>
+<button id="authSubmit" class="btn btnGold" style="width:100%;margin-top:16px" type="submit">Войти</button>
+</form>
+<div id="authNotice" class="notice">Подключение…</div>
+</section>
+</div>
 
-<div class="layout">
-<main>
-  <section class="card" id="auth">
-    <h2>Добро пожаловать</h2>
-    <p class="sub">Войди в аккаунт или создай новый.</p>
-    <form id="authForm">
-      <div class="field"><label for="email">Электронная почта</label><input id="email" type="email" autocomplete="email" placeholder="name@example.com" required></div>
-      <div class="field"><label for="password">Пароль</label><input id="password" type="password" autocomplete="current-password" minlength="6" placeholder="Минимум 6 символов" required></div>
-      <div class="actions">
-        <button class="btn" id="login" type="submit">Войти</button>
-        <button class="btn secondary" id="register" type="button">Регистрация</button>
-      </div>
-    </form>
-  </section>
-
-  <section class="card hidden" id="chat">
-    <div class="chathead"><div><h2>Общий чат</h2><p class="sub" style="margin:4px 0 0">Сообщения участников</p></div><button class="btn secondary" id="logout" type="button">Выйти</button></div>
-    <div id="messages" aria-live="polite">Загружаю сообщения…</div>
-    <form id="sendForm" class="composer">
-      <textarea id="message" maxlength="1000" rows="2" placeholder="Написать сообщение…" required></textarea>
-      <button class="btn" id="send" type="submit">Отправить</button>
-    </form>
-    <button class="btn secondary" id="refresh" type="button" style="width:100%;margin-top:10px">Обновить сообщения</button>
-  </section>
-
-  <section class="card admin hidden" id="admin">
-    <h2>Панель администратора</h2>
-    <p>Роль администратора подтверждена базой данных.</p>
-    <p class="sub">Удаление сообщений, мут и бан требуют отдельных защищённых серверных команд и здесь пока не включены.</p>
-  </section>
-
-  <div id="status" role="status" aria-live="polite">Подключение…</div>
-</main>
-
+<div id="app" class="app hidden">
 <aside class="side">
-  <section class="card">
-    <h2>Информация</h2>
-    <div class="stat"><strong>GOLD</strong><span>Тёмная тема с золотом</span></div>
-    <div class="stat"><strong>Аккаунт</strong><span>Вход через Supabase</span></div>
-    <div class="stat"><strong>Общий чат</strong><span>Обмен сообщениями</span></div>
-  </section>
-  <section class="card">
-    <h2>Правила</h2>
-    <p class="sub" style="margin-bottom:0">Уважай участников. Не отправляй пароли, секретные ключи и личные данные.</p>
-  </section>
+<div class="sideHead">
+<h1 style="font-size:18px">Goldihecki <span class="gold">DM</span></h1>
+<div id="myLabel" class="muted" style="font-size:12px;overflow-wrap:anywhere"></div>
+</div>
+<div class="sideTools">
+<input id="userSearch" class="search" placeholder="Найти пользователя…">
+<button id="newChatHint" class="btn btnGold" type="button">＋ Найти человека</button>
+</div>
+<div id="peopleList" class="people"><div class="empty">Загружаю пользователей…</div></div>
+<div class="sideFoot">
+<button id="refreshBtn" class="btn" type="button">Обновить</button>
+<button id="adminOpen" class="btn hidden" type="button">Админ-панель</button>
+<button id="signOutBtn" class="btn" type="button">Выйти</button>
+</div>
 </aside>
+
+<main class="main">
+<header class="mainTop">
+<div class="chatIdentity">
+<button id="mobileBack" class="btn mobileBack" style="display:none" type="button">‹</button>
+<div id="chatAvatar" class="avatar">G</div>
+<div><h2 id="chatTitle">Выбери человека</h2><div id="chatSubtitle" class="muted" style="font-size:12px">Каждый диалог отдельный</div></div>
 </div>
-<div class="foot">Чат Голдичечки · GOLD EDITION</div>
+<button id="adminClearChat" class="btn btnDanger hidden" type="button">Очистить чат</button>
+</header>
+<section id="messages" class="messages">
+<div class="empty">Выбери зарегистрированного пользователя для личной переписки.</div>
+</section>
+<form id="composer" class="composer">
+<textarea id="messageInput" class="field" maxlength="4000" placeholder="Напиши сообщение…" disabled></textarea>
+<button id="sendBtn" class="btn btnGold" type="submit" disabled>Отправить</button>
+</form>
+<div class="connection"><span id="connectionState">Подключение к Supabase…</span></div>
+</main>
 </div>
 
+<div id="adminModal" class="modalBack hidden" role="dialog" aria-modal="true">
+<section class="modal">
+<div class="modalHead"><h2>Админ-панель</h2><button id="adminClose" class="btn" type="button">Закрыть</button></div>
+<p class="muted" style="font-size:12px">Бан, мут на час, удаление сообщений.</p>
+<input id="adminSearch" class="search" placeholder="Найти пользователя…">
+<div id="adminUsers" class="adminList"></div>
+<div id="adminNotice" class="notice"></div>
+</section>
+</div>
+<div id="toast" class="toast hidden"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-(() => {
 'use strict';
-
 const SUPABASE_URL='https://bkzvoktchnxidoeaklca.supabase.co';
 const SUPABASE_KEY='sb_publishable_KiTpU3ATB2S7g4YCtac2fw_34-spY_p';
 const $=id=>document.getElementById(id);
-let db=null,currentUser=null,busy=false;
+let db=null,currentUser=null,myModeration=null,isAdmin=false;
+let people=[],activePerson=null,activeConversation=null,messages=[];
+let authMode='login',pollTimer=null,toastTimer=null,loadingMessages=false;
 
-function status(message,type=''){
-  $('status').textContent=message;
-  $('status').className=type;
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const username=p=>p?.username||'пользователь';
+const initials=s=>(s||'?').trim().slice(0,1).toUpperCase();
+const timeOf=v=>new Date(v).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+const dateOf=v=>new Date(v).toLocaleString('ru-RU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+
+function friendlyError(e){
+ const m=String(e?.message||e||'Неизвестная ошибка');
+ if(/Failed to fetch|NetworkError|Load failed|ERR_NAME_NOT_RESOLVED/i.test(m))
+  return 'Нет соединения с Supabase. Проверь интернет. Возможно, сервер недоступен без VPN.';
+ if(/Invalid API key|API key/i.test(m))return 'Supabase отклонил API-ключ: проверь URL и publishable key.';
+ if(/row-level security|permission denied|not allowed|42501/i.test(m))
+  return 'Доступ запрещён правилами базы. Проверь, что выполнил весь SQL-код.';
+ if(/does not exist|schema cache|Could not find the table|function .* not found/i.test(m))
+  return 'Не найдена таблица или функция. Выполни SQL-код из инструкции.';
+ return m;
 }
-function explain(error){
-  const m=error?.message||String(error||'Неизвестная ошибка');
-  if(/invalid api key|api key/i.test(m))
-    return 'Supabase отклонил API-ключ. Проверь Publishable key в настройках своего проекта: новый дизайн не может исправить неподходящий ключ.';
-  if(/failed to fetch|networkerror|load failed/i.test(m))
-    return 'Нет соединения с Supabase. Проверь интернет, VPN и доступность сервиса.';
-  if(/invalid login credentials/i.test(m))
-    return 'Неверная почта или пароль. Проверь данные или зарегистрируйся.';
-  if(/email not confirmed/i.test(m))
-    return 'Подтверди почту по ссылке из письма, затем войди.';
-  return m;
+function toast(msg,error=false){
+ $('toast').textContent=msg;$('toast').classList.remove('hidden');
+ $('toast').classList.toggle('error',error);
+ clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.add('hidden'),4500);
 }
-function report(e){status(explain(e),'error')}
-function setBusy(v){
-  busy=v;
-  ['login','register','send','logout','refresh'].forEach(id=>$(id).disabled=v);
+function authNotice(msg,error=false){
+ $('authNotice').textContent=msg;$('authNotice').classList.toggle('error',error);
 }
-function showUser(user){
-  currentUser=user||null;
-  $('auth').classList.toggle('hidden',!!currentUser);
-  $('chat').classList.toggle('hidden',!currentUser);
-  $('admin').classList.add('hidden');
+function setConnection(msg,ok=false){
+ $('connectionState').textContent=msg;
+ $('connectionState').className=ok?'online':'offline';
 }
-async function register(){
-  if(busy)return;
-  const email=$('email').value.trim(),password=$('password').value;
-  if(!email||password.length<6){status('Введи почту и пароль минимум из 6 символов.','error');return}
-  setBusy(true);
-  try{
-    const {data,error}=await db.auth.signUp({email,password});
-    if(error)throw error;
-    if(data.session&&data.user){
-      await updateUI(data.user);
-      status('Регистрация успешна.','success');
-    }else{
-      status('Регистрация создана. Если требуется подтверждение почты, проверь письмо и затем войди.','success');
-    }
-  }catch(e){report(e)}finally{setBusy(false)}
+function showAuth(){
+ $('authScreen').classList.remove('hidden');$('app').classList.add('hidden');
+ $('adminModal').classList.add('hidden');
+ if(pollTimer)clearInterval(pollTimer);
 }
-async function login(e){
-  if(e)e.preventDefault();
-  if(busy)return;
-  const email=$('email').value.trim(),password=$('password').value;
-  if(!email||!password){status('Введи почту и пароль.','error');return}
-  setBusy(true);
-  try{
-    const {data,error}=await db.auth.signInWithPassword({email,password});
-    if(error)throw error;
-    await updateUI(data.user);
-    status('Вход выполнен.','success');
-  }catch(e){report(e)}finally{setBusy(false)}
+function showApp(){
+ $('authScreen').classList.add('hidden');$('app').classList.remove('hidden');
+ if(pollTimer)clearInterval(pollTimer);
+ pollTimer=setInterval(()=>{
+  if(currentUser){refreshPeople(false).catch(()=>{});if(activeConversation)loadMessages(false);}
+ },6000);
 }
-async function updateUI(user){
-  showUser(user);
-  if(!user)return;
-  try{
-    const {data,error}=await db.from('chat_roles').select('role').eq('user_id',user.id).maybeSingle();
-    if(error)throw error;
-    if(data?.role==='admin')$('admin').classList.remove('hidden');
-  }catch(e){status('Вход выполнен, но роль администратора проверить не удалось: '+explain(e),'error')}
-  await loadMessages();
+function setMode(mode){
+ authMode=mode;
+ $('loginTab').classList.toggle('btnGold',mode==='login');
+ $('signupTab').classList.toggle('btnGold',mode==='signup');
+ $('authSubmit').textContent=mode==='login'?'Войти':'Создать аккаунт';
 }
-async function loadMessages(){
-  if(!currentUser||busy)return;
-  $('messages').textContent='Загружаю сообщения…';
-  try{
-    const {data,error}=await db.from('messages').select('name,content,created_at').order('created_at',{ascending:true}).limit(100);
-    if(error)throw error;
-    $('messages').replaceChildren();
-    if(!data?.length){$('messages').textContent='Пока сообщений нет. Напиши первым.';return}
-    for(const msg of data){
-      const item=document.createElement('article');item.className='msg';
-      const name=document.createElement('b');name.textContent=msg.name||'Участник';
-      const body=document.createElement('div');body.className='body';body.textContent=msg.content||'';
-      item.append(name,body);
-      if(msg.created_at){
-        const time=document.createElement('time'),date=new Date(msg.created_at);
-        time.textContent=Number.isNaN(date.getTime())?'':date.toLocaleString('ru-RU');
-        item.append(time);
-      }
-      $('messages').append(item);
-    }
-    $('messages').scrollTop=$('messages').scrollHeight;
-  }catch(e){$('messages').textContent='Не удалось загрузить сообщения.';report(e)}
-}
-async function sendMessage(e){
-  e.preventDefault();
-  if(busy||!currentUser)return;
-  const content=$('message').value.trim();
-  if(!content)return;
-  setBusy(true);
-  try{
-    const name=(currentUser.email||'Участник').split('@')[0].slice(0,30);
-    const {error}=await db.from('messages').insert({name,content:content.slice(0,1000)});
-    if(error)throw error;
-    $('message').value='';
-    status('Сообщение отправлено.','success');
-    await loadMessages();
-  }catch(e){report(e)}finally{setBusy(false)}
-}
-async function logout(){
-  if(busy)return;
-  setBusy(true);
-  try{
-    const {error}=await db.auth.signOut();
-    if(error)throw error;
-    showUser(null);
-    $('messages').replaceChildren();
-    status('Ты вышел из аккаунта.','success');
-  }catch(e){report(e)}finally{setBusy(false)}
-}
-async function init(){
-  if(!window.supabase){
-    status('Библиотека Supabase не загрузилась. Проверь соединение с интернетом.','error');
+$('loginTab').addEventListener('click',()=>setMode('login'));
+$('signupTab').addEventListener('click',()=>setMode('signup'));
+
+$('authForm').addEventListener('submit',async e=>{
+ e.preventDefault();
+ if(!db){authNotice('Supabase JS не загрузился. Проверь соединение.',true);return;}
+ const email=$('email').value.trim(),password=$('password').value;
+ $('authSubmit').disabled=true;authNotice('Проверяю данные…');
+ try{
+  if(authMode==='login'){
+   const {error}=await db.auth.signInWithPassword({email,password});
+   if(error)throw error;
+  }else{
+   const {data,error}=await db.auth.signUp({email,password});
+   if(error)throw error;
+   if(!data.session){
+    authNotice('Аккаунт создан. Подтверди почту по ссылке, если Supabase просит это сделать.');
     return;
+   }
   }
-  try{
-    db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-    const {data,error}=await db.auth.getSession();
-    if(error)throw error;
-    if(data.session?.user)await updateUI(data.session.user);
-    else status('Готово. Войди или зарегистрируйся.','success');
-    db.auth.onAuthStateChange((_event,session)=>{
-      if(session?.user&&session.user.id!==currentUser?.id)updateUI(session.user);
-    });
-  }catch(e){report(e)}
+  authNotice('Успешно.');
+ }catch(e){authNotice(friendlyError(e),true);}
+ finally{$('authSubmit').disabled=false;}
+});
+
+async function ensureProfile(){
+ let {data,error}=await db.from('profiles').select('user_id,username').eq('user_id',currentUser.id).maybeSingle();
+ if(error)throw error;
+ if(!data){
+  const base=(currentUser.email||'user').split('@')[0].replace(/[^a-z0-9_]/gi,'').slice(0,20)||'user';
+  const name=base+'_'+currentUser.id.replaceAll('-','').slice(0,5);
+  const r=await db.from('profiles').insert({user_id:currentUser.id,username:name});
+  if(r.error&&r.error.code!=='23505')throw r.error;
+  ({data,error}=await db.from('profiles').select('user_id,username').eq('user_id',currentUser.id).single());
+  if(error)throw error;
+ }
+ return data;
 }
-$('authForm').addEventListener('submit',login);
-$('register').addEventListener('click',register);
-$('sendForm').addEventListener('submit',sendMessage);
-$('logout').addEventListener('click',logout);
-$('refresh').addEventListener('click',loadMessages);
-init();
+async function afterLogin(user){
+ currentUser=user;
+ if(!user){myModeration=null;isAdmin=false;activePerson=null;activeConversation=null;showAuth();return;}
+ showApp();$('myLabel').textContent=user.email||user.id;
+ setConnection('Подключение к базе…');
+ try{
+  await ensureProfile();
+  const own=await db.from('user_moderation').select('user_id,is_banned,muted_until').eq('user_id',user.id).maybeSingle();
+  if(own.error)throw own.error;
+  myModeration=own.data||null;
+  const role=await db.from('chat_roles').select('role').eq('user_id',user.id).maybeSingle();
+  if(role.error&&!/permission|row-level/i.test(role.error.message))throw role.error;
+  isAdmin=role.data?.role==='admin';
+  $('adminOpen').classList.toggle('hidden',!isAdmin);
+  await refreshPeople(true);
+ }catch(e){
+  setConnection(friendlyError(e));toast(friendlyError(e),true);
+  $('peopleList').innerHTML='<div class="empty">'+esc(friendlyError(e))+'</div>';
+ }
+}
+async function refreshPeople(showStatus=false){
+ if(!db||!currentUser)return;
+ const [pr,cr,mr]=await Promise.all([
+  db.from('profiles').select('user_id,username').order('username'),
+  db.from('conversations').select('id,user_a,user_b,last_message_at').order('last_message_at',{ascending:false}),
+  db.from('user_moderation').select('user_id,is_banned,muted_until')
+ ]);
+ if(pr.error)throw pr.error;if(cr.error)throw cr.error;if(mr.error)throw mr.error;
+ const mods=new Map((mr.data||[]).map(x=>[x.user_id,x]));
+ people=(pr.data||[]).filter(p=>p.user_id!==currentUser.id).map(p=>({
+  ...p,moderation:mods.get(p.user_id)||null,
+  conversation:(cr.data||[]).find(c=>(c.user_a===currentUser.id&&c.user_b===p.user_id)||(c.user_b===currentUser.id&&c.user_a===p.user_id))||null
+ }));
+ people.sort((a,b)=>(b.conversation?.last_message_at||'').localeCompare(a.conversation?.last_message_at||'')||username(a).localeCompare(username(b),'ru'));
+ renderPeople();
+ if(showStatus)setConnection('Подключено к Supabase',true);
+ if(isAdmin&&!$('adminModal').classList.contains('hidden'))renderAdminUsers();
+}
+function renderPeople(){
+ const q=$('userSearch').value.trim().toLowerCase();
+ const list=people.filter(p=>username(p).toLowerCase().includes(q));
+ if(!list.length){
+  $('peopleList').innerHTML='<div class="empty">'+(q?'Никого не найдено.':'Пока нет других зарегистрированных пользователей.')+'</div>';
+  return;
+ }
+ $('peopleList').innerHTML=list.map(p=>{
+  const sub=p.moderation?.is_banned?'Заблокирован':p.conversation?'Открыть переписку':'Начать личный чат';
+  return `<button class="person ${activePerson?.user_id===p.user_id?'active':''}" data-user="${p.user_id}" type="button">
+  <span class="avatar">${esc(initials(username(p)))}</span>
+  <span class="personText"><span class="personName">${esc(username(p))}</span><br><span class="personSub">${esc(sub)}</span></span></button>`;
+ }).join('');
+ document.querySelectorAll('[data-user]').forEach(el=>el.addEventListener('click',()=>openPerson(el.dataset.user)));
+}
+$('userSearch').addEventListener('input',renderPeople);
+$('newChatHint').addEventListener('click',()=>{$('userSearch').focus();$('userSearch').placeholder='Введи имя пользователя…';});
+$('refreshBtn').addEventListener('click',async()=>{
+ try{await refreshPeople(true);if(activeConversation)await loadMessages(true);toast('Список обновлён');}
+ catch(e){toast(friendlyError(e),true);}
+});
+
+async function openPerson(userId){
+ const p=people.find(x=>x.user_id===userId);if(!p)return;
+ activePerson=p;activeConversation=null;messages=[];
+ $('app').classList.add('inChat');renderPeople();
+ $('chatTitle').textContent=username(p);
+ $('chatAvatar').textContent=initials(username(p));
+ $('chatSubtitle').textContent='Личный диалог · только участники';
+ $('messageInput').disabled=true;$('sendBtn').disabled=true;
+ $('messages').innerHTML='<div class="empty">Открываю чат…</div>';
+ try{
+  const {data,error}=await db.rpc('get_or_create_dm',{p_other_user:userId});
+  if(error)throw error;
+  activeConversation=data;
+  const blocked=!!myModeration?.is_banned||(myModeration?.muted_until&&new Date(myModeration.muted_until)>new Date());
+  $('messageInput').disabled=!!blocked;$('sendBtn').disabled=!!blocked;
+  $('messageInput').placeholder=myModeration?.is_banned?'Аккаунт заблокирован':blocked?'На аккаунте мут':'Напиши сообщение…';
+  $('adminClearChat').classList.toggle('hidden',!isAdmin);
+  await loadMessages(true);renderPeople();
+ }catch(e){
+  $('messages').innerHTML='<div class="empty">'+esc(friendlyError(e))+'</div>';
+  toast(friendlyError(e),true);
+ }
+}
+async function loadMessages(scroll=true){
+ if(!activeConversation||loadingMessages)return;
+ loadingMessages=true;
+ try{
+  const {data,error}=await db.from('direct_messages')
+   .select('id,conversation_id,sender_id,content,created_at')
+   .eq('conversation_id',activeConversation)
+   .order('created_at',{ascending:true}).limit(300);
+  if(error)throw error;
+  const incoming=data||[];
+  const changed=incoming.length!==messages.length||
+   (incoming.length&&messages.length&&incoming[incoming.length-1].id!==messages[messages.length-1].id);
+  messages=incoming;
+  if(changed||scroll)renderMessages(scroll);
+  setConnection('Личный чат синхронизирован',true);
+ }catch(e){
+  setConnection(friendlyError(e));
+  if(scroll)$('messages').innerHTML='<div class="empty">'+esc(friendlyError(e))+'</div>';
+ }finally{loadingMessages=false;}
+}
+function renderMessages(scroll=false){
+ const area=$('messages');
+ if(!messages.length){
+  area.innerHTML='<div class="empty">Пока сообщений нет. Напиши первым!</div>';return;
+ }
+ area.innerHTML=messages.map(m=>{
+  const mine=m.sender_id===currentUser.id;
+  const p=people.find(x=>x.user_id===m.sender_id);
+  return `<article class="msg ${mine?'mine':''}">
+   <div class="bubble">${esc(m.content)}</div>
+   <div class="msgMeta">${mine?'Вы':esc(username(p))} · ${esc(timeOf(m.created_at))}
+   ${isAdmin?` <button class="deleteMsg" data-delete="${m.id}" type="button">Удалить</button>`:''}</div>
+  </article>`;
+ }).join('');
+ if(isAdmin)document.querySelectorAll('[data-delete]').forEach(b=>b.addEventListener('click',()=>deleteMessage(b.dataset.delete)));
+ if(scroll)area.scrollTop=area.scrollHeight;
+}
+$('composer').addEventListener('submit',async e=>{
+ e.preventDefault();if(!activeConversation||!currentUser)return;
+ const content=$('messageInput').value.trim();if(!content)return;
+ if(content.length>4000){toast('Максимум 4000 символов',true);return;}
+ $('sendBtn').disabled=true;
+ try{
+  const {error}=await db.from('direct_messages').insert({
+   conversation_id:activeConversation,sender_id:currentUser.id,content
+  });
+  if(error)throw error;
+  $('messageInput').value='';
+  await loadMessages(true);await refreshPeople(false);
+ }catch(e){toast(friendlyError(e),true);setConnection(friendlyError(e));}
+ finally{
+  const blocked=!!myModeration?.is_banned||(myModeration?.muted_until&&new Date(myModeration.muted_until)>new Date());
+  $('sendBtn').disabled=!activeConversation||!!blocked;
+ }
+});
+$('messageInput').addEventListener('keydown',e=>{
+ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('composer').requestSubmit();}
+});
+$('mobileBack').addEventListener('click',()=>$('app').classList.remove('inChat'));
+
+async function deleteMessage(id){
+ if(!isAdmin||!confirm('Удалить сообщение?'))return;
+ try{
+  const {error}=await db.from('direct_messages').delete().eq('id',id);
+  if(error)throw error;
+  messages=messages.filter(m=>m.id!==id);renderMessages();toast('Удалено');
+ }catch(e){toast(friendlyError(e),true);}
+}
+$('adminClearChat').addEventListener('click',async()=>{
+ if(!isAdmin||!activeConversation||!confirm('Удалить все сообщения этого чата?'))return;
+ try{
+  const {error}=await db.from('direct_messages').delete().eq('conversation_id',activeConversation);
+  if(error)throw error;messages=[];renderMessages();toast('История удалена');
+ }catch(e){toast(friendlyError(e),true);}
+});
+$('signOutBtn').addEventListener('click',async()=>{if(db)await db.auth.signOut();});
+
+$('adminOpen').addEventListener('click',async()=>{
+ if(!isAdmin)return;
+ $('adminModal').classList.remove('hidden');$('adminNotice').textContent='';
+ try{await refreshPeople(false);renderAdminUsers();}
+ catch(e){$('adminNotice').textContent=friendlyError(e);}
+});
+$('adminClose').addEventListener('click',()=>$('adminModal').classList.add('hidden'));
+$('adminModal').addEventListener('click',e=>{if(e.target===$('adminModal'))$('adminModal').classList.add('hidden');});
+$('adminSearch').addEventListener('input',renderAdminUsers);
+
+function renderAdminUsers(){
+ if(!isAdmin)return;
+ const q=$('adminSearch').value.trim().toLowerCase();
+ const list=people.filter(p=>username(p).toLowerCase().includes(q));
+ if(!list.length){$('adminUsers').innerHTML='<p class="muted">Пользователи не найдены.</p>';return;}
+ $('adminUsers').innerHTML=list.map(p=>{
+  const m=p.moderation||{},muted=m.muted_until&&new Date(m.muted_until)>new Date();
+  const status=m.is_banned?'БАН':muted?'МУТ до '+dateOf(m.muted_until):'Без ограничений';
+  return `<div class="adminUser">
+  <strong>${esc(username(p))}</strong><div class="muted" style="font-size:11px">${esc(status)}</div>
+  <div class="actions">
+  ${m.is_banned?`<button class="btn btnGold" data-mod="unban" data-id="${p.user_id}">Разбан</button>`:`<button class="btn btnDanger" data-mod="ban" data-id="${p.user_id}">Бан</button>`}
+  ${muted?`<button class="btn" data-mod="unmute" data-id="${p.user_id}">Снять мут</button>`:`<button class="btn" data-mod="mute" data-id="${p.user_id}">Мут 1 ч</button>`}
+  <button class="btn" data-mod="delete" data-id="${p.user_id}">Удалить сообщения</button>
+  </div></div>`;
+ }).join('');
+ document.querySelectorAll('[data-mod]').forEach(b=>b.addEventListener('click',()=>moderate(b.dataset.id,b.dataset.mod)));
+}
+async function moderate(userId,action){
+ const p=people.find(x=>x.user_id===userId);if(!p)return;
+ try{
+  if(action==='delete'){
+   if(!confirm('Удалить все сообщения этого пользователя?'))return;
+   const {error}=await db.from('direct_messages').delete().eq('sender_id',userId);
+   if(error)throw error;
+   await loadMessages(true);toast('Сообщения удалены');return;
+  }
+  const body={
+   user_id:userId,
+   is_banned:action==='ban'?true:action==='unban'?false:!!p.moderation?.is_banned,
+   muted_until:action==='mute'?new Date(Date.now()+3600000).toISOString():
+    action==='unmute'||action==='ban'?null:p.moderation?.muted_until||null,
+   reason:action==='ban'?'Заблокирован администратором':action==='mute'?'Мут на 1 час':null,
+   updated_at:new Date().toISOString()
+  };
+  const {error}=await db.from('user_moderation').upsert(body,{onConflict:'user_id'});
+  if(error)throw error;
+  await refreshPeople(false);renderAdminUsers();
+  $('adminNotice').textContent='Изменения сохранены.';toast('Готово');
+ }catch(e){$('adminNotice').textContent=friendlyError(e);toast(friendlyError(e),true);}
+}
+
+(async function boot(){
+ if(!window.supabase?.createClient){
+  authNotice('Библиотека Supabase не загрузилась. Проверь доступ к cdn.jsdelivr.net.',true);return;
+ }
+ try{
+  db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
+   auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
+  });
+  db.auth.onAuthStateChange((_event,session)=>setTimeout(()=>afterLogin(session?.user||null),0));
+  const {data,error}=await db.auth.getSession();
+  if(error)throw error;
+  if(data.session)await afterLogin(data.session.user);
+ }catch(e){authNotice(friendlyError(e),true);}
 })();
 </script>
 </body>
