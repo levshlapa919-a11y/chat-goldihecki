@@ -51,7 +51,7 @@ label{display:block;font-size:12px;color:#c7c4bc;margin:13px 0 6px}
 <label for="password">Пароль</label><input class="field" id="password" type="password" autocomplete="current-password" required minlength="6" placeholder="Минимум 6 символов">    
 <button id="authSubmit" class="btn btnGold btnFull" type="submit">Войти в аккаунт</button>    
 </form>    
-<div id="authNotice" class="notice" aria-live="polite">Инициализация…</div><p class="muted small">Личные аккаунты, отдельные диалоги и уникальные юзернеймы.</p>    
+<div id="authNotice" class="notice" aria-live="polite">Готов к работе</div><p class="muted small">Личные аккаунты, отдельные диалоги и уникальные юзернеймы.</p>    
 </section></div>  
 
 <div id="app" class="app hidden">    
@@ -82,366 +82,656 @@ label{display:block;font-size:12px;color:#c7c4bc;margin:13px 0 6px}
 
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>  
 <script>    
+(function(){
 'use strict';    
-const SUPABASE_URL='https://bkzvoktchnxidoeaklca.supabase.co';    
-const SUPABASE_KEY='sb_publishable_KiTpU3ATB2S7g4YCtac2fw_34-spY_p';    
-const PROJECT_NAMES='Goldihecki DM, YZITK';    
-const $=id=>document.getElementById(id);    
-let db=null,currentUser=null,currentProfile=null,myModeration=null,isAdmin=false;    
-let people=[],conversations=[],blocks=[],activePerson=null,activeConversation=null,messages=[];    
-let authMode='login',pollTimer=null,presenceTimer=null,toastTimer=null,loadingMessages=false,lastTypingUpdate=0;    
-let adminRows=[],knownMessageIds=new Set(),notificationsEnabled=false;    
+var SUPABASE_URL = 'https://bkzvoktchnxidoeaklca.supabase.co';    
+var SUPABASE_KEY = 'sb_publishable_KiTpU3ATB2S7g4YCtac2fw_34-spY_p';    
+function $(id){ return document.getElementById(id); }
 
-const escapeHtml=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&','\x3c':'&lt;','\x3e':'&gt;','&quot;':'"','&#39;':"'"}[c]||c));
-const usernameOf=p=>p?.username||'пользователь';
-const displayOf=p=>p?.display_name||usernameOf(p);
-const initials=n=>(n||'?').trim().slice(0,1).toUpperCase();
-const timeOf=v=>{try{return new Date(v).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}catch{return ''}};
-const dateTimeOf=v=>{if(!v)return 'не указана';try{return new Date(v).toLocaleString('ru-RU',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}catch{return ''}};
-const creatorBadge=p=>p?.is_creator?'<span class="badge">СОЗДАТЕЛЬ</span>':'';
+var db = null, currentUser = null, currentProfile = null, myModeration = null, isAdmin = false;    
+var people = [], conversations = [], blocks = [], activePerson = null, activeConversation = null, messages = [];    
+var authMode = 'login', pollTimer = null, presenceTimer = null, toastTimer = null, loadingMessages = false, lastTypingUpdate = 0;    
+var adminRows = [], knownMessageIds = {}, notificationsEnabled = false;    
 
-function avatarMarkup(p,extra=''){return `<span class="avatar ${extra}">${p?.avatar_url?<img src="${escapeHtml(p.avatar_url)}" alt="" onerror="this.remove()">:escapeHtml(initials(displayOf(p)))}</span>`}
-function statusText(p){if(!p)return 'не в сети';if(p.typing_until&&new Date(p.typing_until)>new Date())return 'печатает…';if(p.last_seen&&Date.now()-new Date(p.last_seen).getTime()<45000)return 'в сети';return 'не в сети'}
-function statusHTML(p){const s=statusText(p),cls=s==='в сети'?'online':s==='печатает…'?'typing':'';return `<span class="presenceDot ${cls}"></span>${escapeHtml(s)}`}
+function escapeHtml(v) {
+    if (v === undefined || v === null) return '';
+    return String(v).replace(/[&<>"']/g, function(c) {
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c] || c;
+    });
+}
+function usernameOf(p) { return (p && p.username) ? p.username : 'пользователь'; }
+function displayOf(p) { return (p && p.display_name) ? p.display_name : usernameOf(p); }
+function initials(n) { return (n || '?').trim().slice(0, 1).toUpperCase(); }
+function timeOf(v) { try { return new Date(v).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'}); } catch(e) { return ''; } }
+function dateTimeOf(v) { if (!v) return 'не указана'; try { return new Date(v).toLocaleString('ru-RU', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); } catch(e) { return ''; } }
+function creatorBadge(p) { return (p && p.is_creator) ? '<span class="badge">СОЗДАТЕЛЬ</span>' : ''; }
 
-function friendlyError(err){
-const raw=String(err?.message||err?.error_description||err||'Неизвестная ошибка');
-if(/Failed to fetch|NetworkError|Load failed|ERR_NAME_NOT_RESOLVED/i.test(raw))return 'Не получается соединиться с Supabase. Проверь интернет и доступ к серверу.';
-if(/Invalid API key|API key/i.test(raw))return 'Supabase отклонил API-ключ. Проверь URL и publishable key.';
-if(/row-level security|permission denied|not allowed|42501/i.test(raw))return 'База отклонила запрос по правилам доступа. Проверь SQL и политики.';
-if(/duplicate key|unique constraint/i.test(raw))return 'Этот юзернейм уже занят. Выбери другой.';
-if(/does not exist|schema cache|Could not find the table|function .* not found/i.test(raw))return 'Не найдена таблица или функция. Проверь SQL в Supabase.';
-return raw;
+function avatarMarkup(p, extra) {
+    extra = extra || '';
+    var url = p && p.avatar_url ? p.avatar_url : '';
+    var name = displayOf(p);
+    return '<span class="avatar ' + extra + '">' + (url ? '<img src="' + escapeHtml(url) + '" alt="" onerror="this.remove()">' : escapeHtml(initials(name))) + '</span>';
+}
+function statusText(p) {
+    if (!p) return 'не в сети';
+    if (p.typing_until && new Date(p.typing_until) > new Date()) return 'печатает…';
+    if (p.last_seen && Date.now() - new Date(p.last_seen).getTime() < 45000) return 'в сети';
+    return 'не в сети';
+}
+function statusHTML(p) {
+    var s = statusText(p);
+    var cls = s === 'в сети' ? 'online' : (s === 'печатает…' ? 'typing' : '');
+    return '<span class="presenceDot ' + cls + '"></span>' + escapeHtml(s);
 }
 
-function toast(msg,error=false){const el=$('toast');el.textContent=msg;el.classList.toggle('error',error);el.classList.remove('hidden');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.add('hidden'),4500)}
-function setConnection(msg,ok=false){$('connectionState').textContent=msg;$('connectionState').className=ok?'online':'offline'}
-function authNotice(msg,error=false){$('authNotice').textContent=msg;$('authNotice').className='notice'+(error?' error':'')}
-
-function showAuth(){
-$('authScreen').classList.remove('hidden');
-$('app').classList.add('hidden');
-$('adminModal').classList.add('hidden');
-$('profileModal').classList.add('hidden');
-if(pollTimer)clearInterval(pollTimer);
-if(presenceTimer)clearInterval(presenceTimer);
-setMode(authMode);
+function friendlyError(err) {
+    var raw = String((err && (err.message || err.error_description)) || err || 'Неизвестная ошибка');
+    if (/Failed to fetch|NetworkError|Load failed|ERR_NAME_NOT_RESOLVED/i.test(raw)) return 'Нет связи с Supabase (возможно, заблокировано сетью).';
+    if (/Invalid API key|API key/i.test(raw)) return 'Supabase отклонил API-ключ.';
+    if (/row-level security|permission denied|not allowed|42501/i.test(raw)) return 'База отклонила запрос по правилам доступа.';
+    return raw;
 }
 
-function showApp(){
-$('authScreen').classList.add('hidden');$('app').classList.remove('hidden');
-if(pollTimer)clearInterval(pollTimer);if(presenceTimer)clearInterval(presenceTimer);
-pollTimer=setInterval(async()=>{if(!currentUser)return;try{await refreshPeople(false);if(activeConversation)await loadMessages(false)}catch(e){setConnection(friendlyError(e))}},6000);
-presenceTimer=setInterval(()=>heartbeat().catch(()=>{}),15000);heartbeat().catch(()=>{});
+function toast(msg, error) {
+    var el = $('toast');
+    el.textContent = msg;
+    el.classList.toggle('error', !!error);
+    el.classList.remove('hidden');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function() { el.classList.add('hidden'); }, 4500);
+}
+function setConnection(msg, ok) {
+    var el = $('connectionState');
+    if (el) {
+        el.textContent = msg;
+        el.className = ok ? 'online' : 'offline';
+    }
+}
+function authNotice(msg, error) {
+    var el = $('authNotice');
+    if (el) {
+        el.textContent = msg;
+        el.className = 'notice' + (error ? ' error' : '');
+    }
 }
 
-function setMode(mode){
-authMode=mode;
-$('loginTab').classList.toggle('active',mode==='login');
-$('signupTab').classList.toggle('active',mode==='signup');
-$('signupFields').classList.toggle('hidden',mode!=='signup');
-$('signupUsername').required=mode==='signup';
-$('authSubmit').textContent=mode==='login'?'Войти в аккаунт':'Создать аккаунт';
-$('password').autocomplete=mode==='login'?'current-password':'new-password';
-authNotice(mode==='login'?'Войди, чтобы открыть личные переписки.':'Создай аккаунт и выбери свободный юзернейм.');
+function showAuth() {
+    $('authScreen').classList.remove('hidden');
+    $('app').classList.add('hidden');
+    $('adminModal').classList.add('hidden');
+    $('profileModal').classList.add('hidden');
+    if (pollTimer) clearInterval(pollTimer);
+    if (presenceTimer) clearInterval(presenceTimer);
+    setMode(authMode);
 }
-$('loginTab').onclick=()=>setMode('login');$('signupTab').onclick=()=>setMode('signup');
 
-$('authForm').addEventListener('submit',async e=>{
-e.preventDefault();if(!db){authNotice('Библиотека Supabase не загрузилась.',true);return}
-const email=$('email').value.trim(),password=$('password').value,btn=$('authSubmit');btn.disabled=true;authNotice('Проверяю данные…');
-try{
-if(authMode==='login'){const {error}=await db.auth.signInWithPassword({email,password});if(error)throw error}
-else{
-const username=$('signupUsername').value.trim().toLowerCase(),display_name=$('signupDisplayName').value.trim()||username;
-if(!/^[a-z0-9_]{3,20}$/.test(username))throw new Error('Юзернейм: 3–20 латинских букв, цифр или подчёркиваний.');
-const {data,error}=await db.auth.signUp({email,password,options:{data:{username,display_name}}});if(error)throw error;
-if(!data.session){authNotice('Регистрация создана. Подтверди почту по ссылке из письма.');return}
+function showApp() {
+    $('authScreen').classList.add('hidden');
+    $('app').classList.remove('hidden');
+    if (pollTimer) clearInterval(pollTimer);
+    if (presenceTimer) clearInterval(presenceTimer);
+    pollTimer = setInterval(function() {
+        if (!currentUser) return;
+        refreshPeople().catch(function(e){ setConnection(friendlyError(e)); });
+        if (activeConversation) loadMessages(false).catch(function(){});
+    }, 6000);
+    presenceTimer = setInterval(function() { heartbeat().catch(function(){}); }, 15000);
+    heartbeat().catch(function(){});
 }
-}catch(err){authNotice(friendlyError(err),true)}finally{btn.disabled=false}
+
+function setMode(mode) {
+    authMode = mode;
+    $('loginTab').classList.toggle('active', mode === 'login');
+    $('signupTab').classList.toggle('active', mode === 'signup');
+    $('signupFields').classList.toggle('hidden', mode !== 'signup');
+    $('signupUsername').required = (mode === 'signup');
+    $('authSubmit').textContent = mode === 'login' ? 'Войти в аккаунт' : 'Создать аккаунт';
+    $('password').autocomplete = mode === 'login' ? 'current-password' : 'new-password';
+    authNotice(mode === 'login' ? 'Войди, чтобы открыть личные переписки.' : 'Создай аккаунт и выбери свободный юзернейм.');
+}
+
+// Принудительно вешаем обработчики вкладок сразу
+$('loginTab').onclick = function() { setMode('login'); };
+$('signupTab').onclick = function() { setMode('signup'); };
+
+$('authForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    if (!db) { authNotice('Supabase не инициализирован.', true); return; }
+    var email = $('email').value.trim();
+    var password = $('password').value;
+    var btn = $('authSubmit');
+    btn.disabled = true;
+    authNotice('Проверяю данные…');
+
+    if (authMode === 'login') {
+        db.auth.signInWithPassword({email: email, password: password}).then(function(res) {
+            btn.disabled = false;
+            if (res.error) throw res.error;
+        }).catch(function(err) {
+            btn.disabled = false;
+            authNotice(friendlyError(err), true);
+        });
+    } else {
+        var username = $('signupUsername').value.trim().toLowerCase();
+        var displayName = $('signupDisplayName').value.trim() || username;
+        if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+            btn.disabled = false;
+            authNotice('Юзернейм: 3–20 латинских букв, цифр или _', true);
+            return;
+        }
+        db.auth.signUp({
+            email: email,
+            password: password,
+            options: { data: { username: username, display_name: displayName } }
+        }).then(function(res) {
+            btn.disabled = false;
+            if (res.error) throw res.error;
+            if (!res.data.session) {
+                authNotice('Регистрация создана. Подтверди почту по ссылке.');
+            }
+        }).catch(function(err) {
+            btn.disabled = false;
+            authNotice(friendlyError(err), true);
+        });
+    }
 });
 
-async function ensureProfile(){
-let {data,error}=await db.from('profiles').select('user_id,username,display_name,avatar_url,created_at,last_seen,typing_until,is_creator').eq('user_id',currentUser.id).maybeSingle();
-if(error)throw error;
-if(!data){
-const emailPart=(currentUser.email||'user').split('@')[0];
-const username=(currentUser.user_metadata?.username||(emailPart+'_'+currentUser.id.slice(0,5))).toLowerCase();
-const display_name=currentUser.user_metadata?.display_name||username;
-const ins=await db.from('profiles').insert({user_id:currentUser.id,username,display_name,last_seen:new Date().toISOString()});
-if(ins.error&&ins.error.code!=='23505')throw ins.error;
-({data,error}=await db.from('profiles').select('user_id,username,display_name,avatar_url,created_at,last_seen,typing_until,is_creator').eq('user_id',currentUser.id).single());
-if(error)throw error;
-}
-return data;
-}
-
-async function getModerationRows(){
-let r=await db.from('user_moderation').select('user_id,is_banned,muted_until');
-if(r.error&&/muted_until|column/i.test(r.error.message))r=await db.from('user_moderation').select('user_id,is_banned');
-if(r.error)throw r.error;return r.data||[];
-}
-
-async function afterLogin(user){
-currentUser=user;
-if(!user){currentProfile=null;myModeration=null;isAdmin=false;activePerson=null;activeConversation=null;messages=[];showAuth();return}
-showApp();setConnection('Проверяю соединение с базой…');
-try{
-currentProfile=await ensureProfile();
-const [moderationRows,adminCheck]=await Promise.all([
-getModerationRows(),
-db.rpc('is_current_user_admin')
-]);
-myModeration=moderationRows.find(x=>x.user_id===user.id)||null;
-if(adminCheck.error)throw adminCheck.error;
-isAdmin=adminCheck.data===true;
-$('adminOpen').classList.toggle('hidden',!isAdmin);
-updateMyLabel();await refreshPeople(false);setConnection('Подключено к Supabase',true);
-}catch(err){setConnection(friendlyError(err));toast(friendlyError(err),true);$('peopleList').innerHTML=`<div class="empty"><h3>Не удалось загрузить данные</h3><p>${escapeHtml(friendlyError(err))}</p></div>`}
+function ensureProfile() {
+    return db.from('profiles').select('*').eq('user_id', currentUser.id).maybeSingle().then(function(res) {
+        if (res.error) throw res.error;
+        if (res.data) return res.data;
+        var emailPart = currentUser.email ? currentUser.email.split('@')[0] : 'user';
+        var username = emailPart + '_' + currentUser.id.slice(0, 5);
+        return db.from('profiles').insert({
+            user_id: currentUser.id,
+            username: username.toLowerCase(),
+            display_name: username,
+            last_seen: new Date().toISOString()
+        }).then(function(ins) {
+            if (ins.error && ins.error.code !== '23505') throw ins.error;
+            return db.from('profiles').select('*').eq('user_id', currentUser.id).single();
+        }).then(function(r) {
+            if (r.error) throw r.error;
+            return r.data;
+        });
+    });
 }
 
-function updateMyLabel(){
-if(currentProfile)$('myLabel').innerHTML=`${avatarMarkup(currentProfile)}<span>${escapeHtml(displayOf(currentProfile))}${creatorBadge(currentProfile)}<br><span class="userHandle">@${escapeHtml(usernameOf(currentProfile))}</span></span>`;
+function getModerationRows() {
+    return db.from('user_moderation').select('user_id,is_banned,muted_until').then(function(r) {
+        if (r.error) {
+            return db.from('user_moderation').select('user_id,is_banned').then(function(r2) {
+                if (r2.error) throw r2.error;
+                return r2.data || [];
+            });
+        }
+        return r.data || [];
+    });
 }
 
-async function heartbeat(){if(!db||!currentUser||!currentProfile)return;const now=new Date().toISOString();const {error}=await db.from('profiles').update({last_seen:now}).eq('user_id',currentUser.id);if(error)throw error;currentProfile.last_seen=now}
-
-async function refreshPeople(){
-if(!db||!currentUser)return;
-const results=await Promise.all([
-db.from('profiles').select('user_id,username,display_name,avatar_url,created_at,last_seen,typing_until,is_creator').order('username'),
-db.from('conversations').select('id,user_a,user_b,last_message_at').order('last_message_at',{ascending:false}),
-getModerationRows(),
-db.from('user_blocks').select('blocker_id,blocked_id')
-]);
-const [pr,cr,mr,br]=results;for(const r of [pr,cr,br])if(r.error)throw r.error;
-conversations=cr.data||[];blocks=br.data||[];const mod=new Map(mr.map(x=>[x.user_id,x]));
-people=(pr.data||[]).filter(p=>p.user_id!==currentUser.id).map(p=>({...p,moderation:mod.get(p.user_id)||null,
-conversation:conversations.find(c=>(c.user_a===currentUser.id&&c.user_b===p.user_id)||(c.user_b===currentUser.id&&c.user_a===p.user_id))||null,
-blockedByMe:blocks.some(b=>b.blocker_id===currentUser.id&&b.blocked_id===p.user_id),
-blockedMe:blocks.some(b=>b.blocker_id===p.user_id&&b.blocked_id===currentUser.id)
-})).sort((a,b)=>(b.conversation?.last_message_at||'').localeCompare(a.conversation?.last_message_at||'')||usernameOf(a).localeCompare(usernameOf(b),'ru'));
-renderPeople();if(activePerson){activePerson=people.find(p=>p.user_id===activePerson.user_id)||activePerson;updateChatHeader()}
-if(isAdmin&&!$('adminModal').classList.contains('hidden'))await loadAdminUsers();
-}
-
-function renderPeople(){
-const q=$('userSearch').value.trim().replace(/^@/,'').toLowerCase();
-const list=q?people.filter(p=>usernameOf(p).toLowerCase().includes(q)||displayOf(p).toLowerCase().includes(q)):people.filter(p=>p.conversation);
-$('listSectionLabel').textContent=q?'Результаты поиска':'Мои чаты';
-if(q.length===1){$('peopleList').innerHTML='<div class="empty"><p>Введи минимум 2 символа юзернейма.</p></div>';return}
-$('peopleList').innerHTML=list.length?list.map(p=>`<button class="person ${activePerson?.user_id===p.user_id?'active':''}" data-user="${escapeHtml(p.user_id)}" type="button">${avatarMarkup(p)}<span class="personText"><span class="personName">${escapeHtml(displayOf(p))}${creatorBadge(p)}</span><span class="personSub">@${escapeHtml(usernameOf(p))} · ${escapeHtml(p.blockedByMe?'Ты заблокировал(а) этого пользователя':p.blockedMe?'Переписка заблокирована':p.conversation?statusText(p):'Новый пользователь')}</span></span>${p.conversation?'<span class="gold">●</span>':''}</button>`).join(''):'<div class="empty"><div class="emptyIcon">✦</div><h3>Пока нет чатов</h3><p>Найди человека по уникальному @юзернейму.</p></div>';
-document.querySelectorAll('[data-user]').forEach(el=>el.onclick=()=>openPerson(el.dataset.user));
-}
-$('userSearch').oninput=renderPeople;$('newChatHint').onclick=()=>{$('userSearch').focus();$('userSearch').placeholder='Введи @юзернейм…';renderPeople()};
-$('refreshBtn').onclick=async()=>{try{await refreshPeople();if(activeConversation)await loadMessages(true);toast('Обновлено')}catch(e){toast(friendlyError(e),true)}};
-
-function conversationIdFromRpc(data){if(typeof data==='string')return data;if(data&&typeof data==='object')return data.id||data.conversation_id||data.get_or_create_dm||null;return null}
-
-async function openPerson(userId){
-const p=people.find(x=>x.user_id===userId);if(!p)return;activePerson=p;activeConversation=null;messages=[];knownMessageIds=new Set();renderPeople();$('app').classList.add('inChat');
-$('messages').innerHTML='<div class="empty"><p>Открываю личный чат…</p></div>';updateChatHeader();$('messageInput').disabled=true;$('sendBtn').disabled=true;
-try{
-const {data,error}=await db.rpc('get_or_create_dm',{p_other_user:userId});if(error)throw error;activeConversation=conversationIdFromRpc(data);
-if(!activeConversation)throw new Error('Функция get_or_create_dm не вернула ID диалога.');
-updateChatHeader();const blocked=p.blockedByMe||p.blockedMe,restricted=!!myModeration?.is_banned||(myModeration?.muted_until&&new Date(myModeration.muted_until)>new Date());
-$('messageInput').disabled=blocked||restricted;$('sendBtn').disabled=blocked||restricted;
-$('messageInput').placeholder=myModeration?.is_banned?'Аккаунт заблокирован':restricted?'На аккаунте мут':blocked?'Переписка заблокирована':'Напиши сообщение…';
-await loadMessages(true);renderPeople();
-}catch(e){$('messages').innerHTML=`<div class="empty"><h3>Не удалось открыть чат</h3><p>${escapeHtml(friendlyError(e))}</p></div>`;toast(friendlyError(e),true)}
-}
-
-function updateChatHeader(){
-if(!activePerson){$('chatTitle').textContent='Выбери человека';$('chatSubtitle').textContent='Ищи пользователей по уникальному @юзернейму';$('chatAvatar').textContent='✉';$('chatMenuBtn').classList.add('hidden');return}
-$('chatTitle').innerHTML=`${escapeHtml(displayOf(activePerson))}${creatorBadge(activePerson)}`;
-$('chatSubtitle').innerHTML=`@${escapeHtml(usernameOf(activePerson))} · ${statusHTML(activePerson)}`;
-$('chatAvatar').innerHTML=activePerson.avatar_url?<img src="${escapeHtml(activePerson.avatar_url)}" alt="">:escapeHtml(initials(displayOf(activePerson)));
-$('chatMenuBtn').classList.toggle('hidden',!activeConversation);$('blockChatUser').textContent=activePerson.blockedByMe?'Разблокировать пользователя':'Заблокировать пользователя';$('blockChatUser').disabled=!!activePerson.blockedMe&&!activePerson.blockedByMe;
-}
-$('chatTitle').style.cursor='pointer';$('chatAvatar').style.cursor='pointer';$('chatTitle').onclick=()=>activePerson&&showProfileById(activePerson.user_id);$('chatAvatar').onclick=()=>activePerson&&showProfileById(activePerson.user_id);
-
-async function loadMessages(scroll=false){
-if(!activeConversation||loadingMessages)return;loadingMessages=true;
-try{
-const {data,error}=await db.from('direct_messages').select('id,conversation_id,sender_id,content,created_at').eq('conversation_id',activeConversation).order('created_at',{ascending:true}).limit(300);
-if(error)throw error;const incoming=data||[],changed=incoming.length!==messages.length||incoming.some((m,i)=>m.id!==messages[i]?.id);
-if(messages.length)incoming.forEach(m=>{if(!knownMessageIds.has(m.id)&&m.sender_id!==currentUser.id)sendBrowserNotification(m)});
-incoming.forEach(m=>knownMessageIds.add(m.id));messages=incoming;if(changed||scroll)renderMessages(scroll);setConnection('Личный чат синхронизирован',true);
-}catch(e){setConnection(friendlyError(e));if(scroll)$('messages').innerHTML=`<div class="empty"><h3>Не загрузились сообщения</h3><p>${escapeHtml(friendlyError(e))}</p></div>`}finally{loadingMessages=false}
-}
-
-function renderMessages(scroll=false){
-const area=$('messages');if(!messages.length){area.innerHTML='<div class="empty"><div class="emptyIcon">✦</div><h3>Пока тихо</h3><p>Напиши первым — это личный чат.</p></div>';return}
-area.innerHTML=messages.map(m=>{const mine=m.sender_id===currentUser.id,p=mine?currentProfile:people.find(x=>x.user_id===m.sender_id);return `<article class="msg ${mine?'mine':''}"><div class="bubble">${escapeHtml(m.content)}</div><div class="msgMeta">${p?<button class="msgSender" data-profile-user="${escapeHtml(p.user_id)}" type="button">${escapeHtml(displayOf(p))}</button>:'Пользователь'}<span>${escapeHtml(timeOf(m.created_at))}</span>${isAdmin?<button class="deleteMsg" data-delete-message="${escapeHtml(m.id)}" type="button">Удалить</button>:''}</div></article>`}).join('');
-document.querySelectorAll('[data-profile-user]').forEach(b=>b.onclick=()=>showProfileById(b.dataset.profileUser));
-document.querySelectorAll('[data-delete-message]').forEach(b=>b.onclick=()=>deleteOneMessage(b.dataset.deleteMessage));
-if(scroll)area.scrollTop=area.scrollHeight;
-}
-
-$('composer').onsubmit=async e=>{
-e.preventDefault();if(!activeConversation||!currentUser)return;const content=$('messageInput').value.trim();if(!content)return;
-const btn=$('sendBtn');btn.disabled=true;
-try{const {error}=await db.from('direct_messages').insert({conversation_id:activeConversation,sender_id:currentUser.id,content});if(error)throw error;
-$('messageInput').value='';await db.from('profiles').update({typing_until:null}).eq('user_id',currentUser.id);await loadMessages(true);await refreshPeople();
-}catch(e){toast(friendlyError(e),true)}finally{const blocked=activePerson?.blockedByMe||activePerson?.blockedMe;btn.disabled=!activeConversation||blocked||!!myModeration?.is_banned||!!(myModeration?.muted_until&&new Date(myModeration.muted_until)>new Date())}
-};
-$('messageInput').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('composer').requestSubmit()}};
-$('messageInput').oninput=async()=>{if(!currentUser||!activeConversation||Date.now()-lastTypingUpdate<1800)return;lastTypingUpdate=Date.now();try{await db.from('profiles').update({typing_until:$('messageInput').value.trim()?new Date(Date.now()+5000).toISOString():null}).eq('user_id',currentUser.id)}catch{}};
-$('mobileBack').onclick=()=>$('app').classList.remove('inChat');
-
-async function deleteOneMessage(id){
-if(!isAdmin)return;if(!confirm('Удалить это сообщение без возможности восстановления?'))return;
-try{const {error}=await db.rpc('admin_delete_message',{p_message_id:id});if(error)throw error;messages=messages.filter(m=>m.id!==id);renderMessages(false);toast('Сообщение удалено')}catch(e){toast(friendlyError(e),true)}
-}
-
-$('chatMenuBtn').onclick=()=>$('chatMenu').classList.toggle('hidden');
-document.addEventListener('click',e=>{if(!$('chatMenu').contains(e.target)&&e.target!==$('chatMenuBtn'))$('chatMenu').classList.add('hidden')});
-$('clearOwnChat').onclick=async()=>{
-if(!activeConversation||!confirm('Очистить историю этого личного чата для обоих участников?'))return;
-$('chatMenu').classList.add('hidden');try{const {error}=await db.rpc('clear_my_conversation',{p_conversation_id:activeConversation});if(error)throw error;messages=[];knownMessageIds.clear();renderMessages();toast('История чата очищена')}catch(e){toast(friendlyError(e),true)}
-};
-$('blockChatUser').onclick=async()=>{
-if(!activePerson)return;const p=activePerson;$('chatMenu').classList.add('hidden');
-try{
-if(p.blockedByMe){const {error}=await db.from('user_blocks').delete().eq('blocker_id',currentUser.id).eq('blocked_id',p.user_id);if(error)throw error;toast('Пользователь разблокирован')}
-else{if(!confirm('Заблокировать '+displayOf(p)+'?'))return;const {error}=await db.from('user_blocks').insert({blocker_id:currentUser.id,blocked_id:p.user_id});if(error&&error.code!=='23505')throw error;toast('Пользователь заблокирован')}
-await refreshPeople();activePerson=people.find(x=>x.user_id===p.user_id)||p;updateChatHeader();const disabled=activePerson.blockedByMe||activePerson.blockedMe||!!myModeration?.is_banned||!!(myModeration?.muted_until&&new Date(myModeration.muted_until)>new Date());$('messageInput').disabled=disabled;$('sendBtn').disabled=disabled;
-}catch(e){toast(friendlyError(e),true)}
-};
-$('signOutBtn').onclick=async()=>{try{if(currentUser)await db.from('profiles').update({typing_until:null}).eq('user_id',currentUser.id);await db.auth.signOut()}catch(e){toast(friendlyError(e),true)}};
-
-/* Профили */
-function getKnownProfile(id){if(currentProfile?.user_id===id)return currentProfile;return people.find(p=>p.user_id===id)||null}
-async function showProfileById(id){
-let p=getKnownProfile(id);if(!p){try{const {data,error}=await db.from('profiles').select('user_id,username,display_name,avatar_url,created_at,last_seen,typing_until,is_creator').eq('user_id',id).maybeSingle();if(error)throw error;p=data}catch(e){toast(friendlyError(e),true);return}}
-if(p)openProfileView(p);
-}
-function openProfileView(p,editing=false){
-$('profileTitle').textContent=editing?'Мой профиль':'Профиль пользователя';
-$('profileNameHeading').innerHTML=`${escapeHtml(displayOf(p))}${creatorBadge(p)}`;
-$('profileCreatedLine').textContent='@'+usernameOf(p);
-$('profilePreview').innerHTML=p.avatar_url?<img src="${escapeHtml(p.avatar_url)}" alt="">:escapeHtml(initials(displayOf(p)));
-$('creatorCard').classList.toggle('hidden',!p.is_creator);$('creatorHandles').textContent='@'+usernameOf(p);
-$('profileReadOnly').classList.toggle('hidden',editing);$('profileEditor').classList.toggle('hidden',!editing);
-$('profileDisplayRead').textContent=displayOf(p);$('profileUsernameRead').textContent='@'+usernameOf(p);$('profileStatusRead').innerHTML=statusHTML(p);$('profileReadNotice').textContent='Дата регистрации: '+dateTimeOf(p.created_at);
-if(editing){$('profileDisplayName').value=p.display_name||p.username;$('profileUsername').value=p.username;$('profileNotice').textContent=''}
-$('profileModal').classList.remove('hidden');
-}
-$('profileOpen').onclick=()=>currentProfile&&openProfileView(currentProfile,true);
-$('profileClose').onclick=()=>$('profileModal').classList.add('hidden');
-$('profileModal').onclick=e=>{if(e.target===$('profileModal'))$('profileModal').classList.add('hidden')};
-$('profileSave').onclick=async()=>{
-const username=$('profileUsername').value.trim().toLowerCase(),display_name=$('profileDisplayName').value.trim()||username;
-if(!/^[a-z0-9_]{3,20}$/.test(username)){$('profileNotice').textContent='Юзернейм: 3–20 латинских букв, цифр или _.';return}
-if(display_name.length>32){$('profileNotice').textContent='Ник должен быть не длиннее 32 символов.';return}
-const btn=$('profileSave');btn.disabled=true;$('profileNotice').textContent='Сохраняю…';
-try{const {data,error}=await db.from('profiles').update({username,display_name}).eq('user_id',currentUser.id).select('user_id,username,display_name,avatar_url,created_at,last_seen,typing_until,is_creator').single();if(error)throw error;currentProfile=data;updateMyLabel();await refreshPeople();$('profileModal').classList.add('hidden');toast('Профиль сохранён')}catch(e){$('profileNotice').textContent=friendlyError(e);toast(friendlyError(e),true)}finally{btn.disabled=false}
-};
-
-/* Уведомления */
-function updateNotifyButton(){
-if(!('Notification'in window)){$('notifyBtn').textContent='Уведомления недоступны';$('notifyBtn').disabled=true;return}
-notificationsEnabled=Notification.permission==='granted';$('notifyBtn').textContent=notificationsEnabled?'🔔 Уведомления включены':Notification.permission==='denied'?'Уведомления запрещены':'🔔 Включить уведомления';
-}
-$('notifyBtn').onclick=async()=>{
-if(!('Notification'in window)){toast('Браузер не поддерживает уведомления.',true);return}
-try{const p=await Notification.requestPermission();notificationsEnabled=p==='granted';updateNotifyButton();if(notificationsEnabled){toast('Уведомления включены');new Notification('Goldihecki DM',{body:'Уведомления включены.'})}else toast('Разреши уведомления в настройках браузера.',true)}catch{toast('Не получилось включить уведомления.',true)}
-};
-function sendBrowserNotification(m){
-if(!('Notification'in window)||Notification.permission!=='granted'||!notificationsEnabled||!document.hidden)return;
-const p=people.find(x=>x.user_id===m.sender_id);try{const n=new Notification(p?'@'+usernameOf(p):'Новое сообщение',{body:String(m.content||'Новое сообщение').slice(0,160),tag:'goldihecki-'+m.id});n.onclick=()=>{window.focus();if(p)openPerson(p.user_id);n.close()}}catch{}
-}
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&currentUser)refreshPeople().catch(()=>{})});
-
-/* Админ-панель */
-$('adminOpen').onclick=async()=>{
-if(!isAdmin)return;$('adminModal').classList.remove('hidden');$('adminSearch').value='';$('adminNotice').textContent='Загружаю пользователей…';
-try{await loadAdminUsers()}catch(e){$('adminNotice').textContent=friendlyError(e)}
-};
-$('adminClose').onclick=()=>$('adminModal').classList.add('hidden');
-$('adminModal').onclick=e=>{if(e.target===$('adminModal'))$('adminModal').classList.add('hidden')};
-$('adminSearch').oninput=renderAdminUsers;
-
-async function loadAdminUsers(){
-if(!isAdmin)throw new Error('Нет прав администратора.');
-const {data,error}=await db.rpc('admin_list_users');if(error)throw error;adminRows=data||[];renderAdminUsers();$('adminNotice').textContent='Пользователей: '+adminRows.length;
-}
-
-function renderAdminUsers(){
-if(!isAdmin)return;const q=$('adminSearch').value.trim().toLowerCase().replace(/^@/,'');
-const rows=adminRows.filter(p=>[p.username,p.email,p.display_name].some(v=>String(v||'').toLowerCase().includes(q)));
-if(!rows.length){$('adminUsers').innerHTML='<div class="empty">Пользователей не найдено.</div>';return}
-$('adminUsers').innerHTML=rows.map(p=>{
-const muted=p.muted_until&&new Date(p.muted_until)>new Date(),mine=p.user_id===currentUser.id;
-const state=p.is_banned?'БАН':muted?'МУТ до '+dateTimeOf(p.muted_until):'Без ограничений';
-return `<div class="adminUser"><div class="who"><strong>${escapeHtml(p.display_name||p.username||'Без ника')}</strong><div class="status">@${escapeHtml(p.username||'—')} · ${escapeHtml(state)}</div><div class="status">Регистрация: ${escapeHtml(dateTimeOf(p.registered_at))}</div><div class="status">${escapeHtml(p.email||'')}</div></div><div class="actions">${mine?'<span class="status">Твой аккаунт</span>':(p.is_banned?`<button class="btn btnGold" data-action="unban" data-target="${escapeHtml(p.user_id)}">Разбан</button>`:`<button class="btn btnDanger" data-action="ban" data-target="${escapeHtml(p.user_id)}">Бан</button>`)+(muted?`<button class="btn btnDark" data-action="unmute" data-target="${escapeHtml(p.user_id)}">Снять мут</button>`:`<button class="btn btnDark" data-action="mute" data-target="${escapeHtml(p.user_id)}">Мут 1 ч</button>`)+`<button class="btn btnDark" data-action="delete-user-messages" data-target="${escapeHtml(p.user_id)}">Удалить сообщения</button>`}</div></div>`;
-}).join('');
-document.querySelectorAll('[data-action]').forEach(b=>b.onclick=()=>moderateUser(b.dataset.target,b.dataset.action));
-}
-
-async function moderateUser(userId,action){
-if(!isAdmin)return;const row=adminRows.find(p=>p.user_id===userId);if(!row)return;
-if(action==='ban'&&!confirm('Заблокировать @'+row.username+'?'))return;
-if(action==='delete-user-messages'&&!confirm('Удалить все сообщения этого пользователя?'))return;
-const notice=$('adminNotice');notice.textContent='Выполняю действие…';
-try{
-if(action==='delete-user-messages'){
-const {error}=await db.rpc('admin_delete_user_messages',{p_user_id:userId});if(error)throw error;
-if(activeConversation)await loadMessages(true);toast('Сообщения пользователя удалены');
-}else{
-let banned=!!row.is_banned,mutedUntil=row.muted_until||null,reason=null;
-if(action==='ban'){banned=true;mutedUntil=null;reason='Заблокирован администратором'}
-if(action==='unban'){banned=false;reason=null}
-if(action==='mute'){mutedUntil=new Date(Date.now()+3600000).toISOString();reason='Мут на 1 час'}
-if(action==='unmute'){mutedUntil=null;reason=null}
-const {error}=await db.rpc('admin_set_moderation',{p_user_id:userId,p_is_banned:banned,p_muted_until:mutedUntil,p_reason:reason});
-if(error)throw error;toast('Модерация сохранена');
-if(userId===currentUser.id){myModeration={...(myModeration||{}),is_banned:banned,muted_until:mutedUntil}}
-}
-await refreshPeople();await loadAdminUsers();notice.textContent='Действие выполнено.';
-}catch(e){notice.textContent=friendlyError(e);toast(friendlyError(e),true)}
-}
-
-/* Запуск с подробной диагностикой на экране */
-(async function boot(){
-try{
-    $('authNotice').textContent = 'Шаг 1: Проверка настроек уведомлений…';
-    updateNotifyButton();
-
-    $('authNotice').textContent = 'Шаг 2: Проверка библиотеки Supabase…';
-    if(!window.supabase?.createClient){
-        throw new Error('Библиотека Supabase не загрузилась. Проверь интернет или сеть.');
+function afterLogin(user) {
+    currentUser = user;
+    if (!user) {
+        currentProfile = null; myModeration = null; isAdmin = false; activePerson = null; activeConversation = null; messages = [];
+        showAuth();
+        return;
     }
-    
-    $('authNotice').textContent = 'Шаг 3: Подключение к базе данных…';
-    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-    });
-    
-    db.auth.onAuthStateChange((_event, session) => {
-        setTimeout(() => afterLogin(session?.user || null), 0);
-    });
+    showApp();
+    setConnection('Загрузка данных…');
 
-    $('authNotice').textContent = 'Шаг 4: Проверка активной сессии…';
-    const sessionPromise = db.auth.getSession();
-    const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Превышено время ожидания ответа от Supabase')), 8000)
-    );
+    Promise.all([
+        ensureProfile(),
+        getModerationRows(),
+        db.rpc('is_current_user_admin')
+    ]).then(function(results) {
+        currentProfile = results[0];
+        var modRows = results[1];
+        var adminRes = results[2];
 
-    const { data, error } = await Promise.race([sessionPromise, timeoutPromise]);
-    if(error) throw error;
-    
-    if(data.session){
-        $('authNotice').textContent = 'Вход выполнен, загрузка чатов…';
-        await afterLogin(data.session.user);
+        myModeration = null;
+        for (var i = 0; i < modRows.length; i++) {
+            if (modRows[i].user_id === user.id) {
+                myModeration = modRows[i];
+                break;
+            }
+        }
+        if (adminRes.error) throw adminRes.error;
+        isAdmin = (adminRes.data === true);
+        $('adminOpen').classList.toggle('hidden', !isAdmin);
+
+        updateMyLabel();
+        return refreshPeople();
+    }).then(function() {
+        setConnection('Подключено', true);
+    }).catch(function(err) {
+        setConnection(friendlyError(err));
+        toast(friendlyError(err), true);
+    });
+}
+
+function updateMyLabel() {
+    if (currentProfile) {
+        $('myLabel').innerHTML = avatarMarkup(currentProfile) + '<span>' + escapeHtml(displayOf(currentProfile)) + creatorBadge(currentProfile) + '<br><span class="userHandle">@' + escapeHtml(usernameOf(currentProfile)) + '</span></span>';
+    }
+}
+
+function heartbeat() {
+    if (!db || !currentUser || !currentProfile) return Promise.resolve();
+    return db.from('profiles').update({last_seen: new Date().toISOString()}).eq('user_id', currentUser.id);
+}
+
+function refreshPeople() {
+    if (!db || !currentUser) return Promise.resolve();
+    return Promise.all([
+        db.from('profiles').select('*').order('username'),
+        db.from('conversations').select('*').order('last_message_at', {ascending: false}),
+        getModerationRows(),
+        db.from('user_blocks').select('*')
+    ]).then(function(results) {
+        var pr = results[0], cr = results[1], mr = results[2], br = results[3];
+        if (pr.error) throw pr.error;
+        if (cr.error) throw cr.error;
+
+        conversations = cr.data || [];
+        blocks = br.data || [];
+        var modMap = {};
+        for (var i = 0; i < mr.length; i++) {
+            modMap[mr[i].user_id] = mr[i];
+        }
+
+        var allProfiles = pr.data || [];
+        people = [];
+        for (var j = 0; j < allProfiles.length; j++) {
+            var p = allProfiles[j];
+            if (p.user_id === currentUser.id) continue;
+
+            var conv = null;
+            for (var c = 0; c < conversations.length; c++) {
+                var item = conversations[c];
+                if ((item.user_a === currentUser.id && item.user_b === p.user_id) || (item.user_b === currentUser.id && item.user_a === p.user_id)) {
+                    conv = item;
+                    break;
+                }
+            }
+
+            var blockedByMe = false, blockedMe = false;
+            for (var b = 0; b < blocks.length; b++) {
+                if (blocks[b].blocker_id === currentUser.id && blocks[b].blocked_id === p.user_id) blockedByMe = true;
+                if (blocks[b].blocker_id === p.user_id && blocks[b].blocked_id === currentUser.id) blockedMe = true;
+            }
+
+            p.moderation = modMap[p.user_id] || null;
+            p.conversation = conv;
+            p.blockedByMe = blockedByMe;
+            p.blockedMe = blockedMe;
+            people.push(p);
+        }
+
+        renderPeople();
+        if (activePerson) {
+            for (var k = 0; k < people.length; k++) {
+                if (people[k].user_id === activePerson.user_id) {
+                    activePerson = people[k];
+                    break;
+                }
+            }
+            updateChatHeader();
+        }
+        if (isAdmin && !$('adminModal').classList.contains('hidden')) {
+            loadAdminUsers();
+        }
+    });
+}
+
+function renderPeople() {
+    var q = $('userSearch').value.trim().replace(/^@/, '').toLowerCase();
+    var list = [];
+    if (q) {
+        for (var i = 0; i < people.length; i++) {
+            var p = people[i];
+            if (usernameOf(p).toLowerCase().indexOf(q) !== -1 || displayOf(p).toLowerCase().indexOf(q) !== -1) {
+                list.push(p);
+            }
+        }
     } else {
+        for (var j = 0; j < people.length; j++) {
+            if (people[j].conversation) list.push(people[j]);
+        }
+    }
+    $('listSectionLabel').textContent = q ? 'Результаты поиска' : 'Мои чаты';
+    if (q.length === 1) {
+        $('peopleList').innerHTML = '<div class="empty"><p>Введи минимум 2 символа.</p></div>';
+        return;
+    }
+    if (!list.length) {
+        $('peopleList').innerHTML = '<div class="empty"><div class="emptyIcon">✦</div><h3>Нет чатов</h3><p>Найди человека по @юзернейму.</p></div>';
+        return;
+    }
+    var html = '';
+    for (var k = 0; k < list.length; k++) {
+        var item = list[k];
+        var activeClass = (activePerson && activePerson.user_id === item.user_id) ? ' active' : '';
+        html += '<button class="person' + activeClass + '" data-user="' + escapeHtml(item.user_id) + '" type="button">' +
+            avatarMarkup(item) +
+            '<span class="personText">' +
+            '<span class="personName">' + escapeHtml(displayOf(item)) + creatorBadge(item) + '</span>' +
+            '<span class="personSub">@' + escapeHtml(usernameOf(item)) + '</span>' +
+            '</span>' + (item.conversation ? '<span class="gold">●</span>' : '') +
+            '</button>';
+    }
+    $('peopleList').innerHTML = html;
+    var buttons = document.querySelectorAll('[data-user]');
+    for (var b = 0; b < buttons.length; b++) {
+        buttons[b].onclick = (function(uid) {
+            return function() { openPerson(uid); };
+        })(buttons[b].getAttribute('data-user'));
+    }
+}
+
+$('userSearch').oninput = renderPeople;
+$('newChatHint').onclick = function() { $('userSearch'].focus(); renderPeople(); };
+$('refreshBtn').onclick = function() {
+    refreshPeople().then(function() {
+        if (activeConversation) loadMessages(true);
+        toast('Обновлено');
+    }).catch(function(e) { toast(friendlyError(e), true); });
+};
+
+function openPerson(userId) {
+    var p = null;
+    for (var i = 0; i < people.length; i++) {
+        if (people[i].user_id === userId) { p = people[i]; break; }
+    }
+    if (!p) return;
+    activePerson = p;
+    activeConversation = null;
+    messages = [];
+    knownMessageIds = {};
+    renderPeople();
+    $('app').classList.add('inChat');
+    $('messages').innerHTML = '<div class="empty"><p>Открываю чат…</p></div>';
+    updateChatHeader();
+    $('messageInput').disabled = true;
+    $('sendBtn').disabled = true;
+
+    db.rpc('get_or_create_dm', {p_other_user: userId}).then(function(res) {
+        if (res.error) throw res.error;
+        var data = res.data;
+        activeConversation = (typeof data === 'string') ? data : (data && (data.id || data.conversation_id || data.get_or_create_dm));
+        if (!activeConversation) throw new Error('Не удалось получить ID чата.');
+        updateChatHeader();
+        var blocked = p.blockedByMe || p.blockedMe;
+        var restricted = myModeration && (myModeration.is_banned || (myModeration.muted_until && new Date(myModeration.muted_until) > new Date()));
+        $('messageInput').disabled = blocked || restricted;
+        $('sendBtn').disabled = blocked || restricted;
+        return loadMessages(true);
+    }).catch(function(e) {
+        $('messages').innerHTML = '<div class="empty"><h3>Ошибка</h3><p>' + escapeHtml(friendlyError(e)) + '</p></div>';
+        toast(friendlyError(e), true);
+    });
+}
+
+function updateChatHeader() {
+    if (!activePerson) {
+        $('chatTitle').textContent = 'Выбери человека';
+        $('chatSubtitle').textContent = 'Ищи пользователей по @юзернейму';
+        $('chatAvatar').textContent = '✉';
+        $('chatMenuBtn').classList.add('hidden');
+        return;
+    }
+    $('chatTitle').innerHTML = escapeHtml(displayOf(activePerson)) + creatorBadge(activePerson);
+    $('chatSubtitle').innerHTML = '@' + escapeHtml(usernameOf(activePerson)) + ' · ' + statusHTML(activePerson);
+    $('chatAvatar').innerHTML = activePerson.avatar_url ? '<img src="' + escapeHtml(activePerson.avatar_url) + '" alt="">' : escapeHtml(initials(displayOf(activePerson)));
+    $('chatMenuBtn').classList.remove('hidden');
+    $('blockChatUser').textContent = activePerson.blockedByMe ? 'Разблокировать' : 'Заблокировать';
+}
+
+function loadMessages(scroll) {
+    if (!activeConversation || loadingMessages) return Promise.resolve();
+    loadingMessages = true;
+    return db.from('direct_messages').select('*').eq('conversation_id', activeConversation).order('created_at', {ascending: true}).limit(300).then(function(res) {
+        loadingMessages = false;
+        if (res.error) throw res.error;
+        var incoming = res.data || [];
+        for (var j = 0; j < incoming.length; j++) {
+            knownMessageIds[incoming[j].id] = true;
+        }
+        messages = incoming;
+        renderMessages(scroll);
+        setConnection('Синхронизировано', true);
+    }).catch(function(e) {
+        loadingMessages = false;
+        setConnection(friendlyError(e));
+    });
+}
+
+function renderMessages(scroll) {
+    var area = $('messages');
+    if (!messages.length) {
+        area.innerHTML = '<div class="empty"><div class="emptyIcon">✦</div><h3>Пусто</h3><p>Напиши первое сообщение.</p></div>';
+        return;
+    }
+    var html = '';
+    for (var i = 0; i < messages.length; i++) {
+        var m = messages[i];
+        var mine = (m.sender_id === currentUser.id);
+        var p = mine ? currentProfile : null;
+        if (!p) {
+            for (var x = 0; x < people.length; x++) {
+                if (people[x].user_id === m.sender_id) { p = people[x]; break; }
+            }
+        }
+        html += '<article class="msg ' + (mine ? 'mine' : '') + '">' +
+            '<div class="bubble">' + escapeHtml(m.content) + '</div>' +
+            '<div class="msgMeta">' +
+            '<span>' + escapeHtml(timeOf(m.created_at)) + '</span>' +
+            (isAdmin ? '<button class="deleteMsg" data-del="' + escapeHtml(m.id) + '" type="button">Удалить</button>' : '') +
+            '</div>' +
+            '</article>';
+    }
+    area.innerHTML = html;
+    var dels = area.querySelectorAll('[data-del]');
+    for (var d = 0; d < dels.length; d++) {
+        dels[d].onclick = (function(mid) {
+            return function() {
+                if (confirm('Удалить сообщение?')) {
+                    db.rpc('admin_delete_message', {p_message_id: mid}).then(function(res) {
+                        if (res.error) throw res.error;
+                        loadMessages(false);
+                    }).catch(function(err) { toast(friendlyError(err), true); });
+                }
+            };
+        })(dels[d].getAttribute('data-del'));
+    }
+    if (scroll) area.scrollTop = area.scrollHeight;
+}
+
+$('composer').onsubmit = function(e) {
+    e.preventDefault();
+    if (!activeConversation || !currentUser) return;
+    var input = $('messageInput');
+    var content = input.value.trim();
+    if (!content) return;
+    var btn = $('sendBtn');
+    btn.disabled = true;
+    db.from('direct_messages').insert({
+        conversation_id: activeConversation,
+        sender_id: currentUser.id,
+        content: content
+    }).then(function(res) {
+        btn.disabled = false;
+        if (res.error) throw res.error;
+        input.value = '';
+        return loadMessages(true);
+    }).then(function() {
+        return refreshPeople();
+    }).catch(function(err) {
+        btn.disabled = false;
+        toast(friendlyError(err), true);
+    });
+};
+
+$('messageInput').onkeydown = function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        $('composer').requestSubmit();
+    }
+};
+$('mobileBack').onclick = function() { $('app').classList.remove('inChat'); };
+
+$('chatMenuBtn').onclick = function() { $('chatMenu').classList.toggle('hidden'); };
+$('clearOwnChat').onclick = function() {
+    $('chatMenu').classList.add('hidden');
+    if (!activeConversation || !confirm('Очистить историю?')) return;
+    db.rpc('clear_my_conversation', {p_conversation_id: activeConversation}).then(function(res) {
+        if (res.error) throw res.error;
+        messages = [];
+        renderMessages(false);
+        toast('Очищено');
+    }).catch(function(e) { toast(friendlyError(e), true); });
+};
+$('blockChatUser').onclick = function() {
+    $('chatMenu').classList.add('hidden');
+    if (!activePerson) return;
+    var p = activePerson;
+    if (p.blockedByMe) {
+        db.from('user_blocks').delete().eq('blocker_id', currentUser.id).eq('blocked_id', p.user_id).then(function() {
+            toast('Разблокирован');
+            refreshPeople();
+        });
+    } else {
+        if (!confirm('Заблокировать?')) return;
+        db.from('user_blocks').insert({blocker_id: currentUser.id, blocked_id: p.user_id}).then(function() {
+            toast('Заблокирован');
+            refreshPeople();
+        });
+    }
+};
+$('signOutBtn').onclick = function() {
+    if (currentUser) db.from('profiles').update({typing_until: null}).eq('user_id', currentUser.id).then(function(){});
+    db.auth.signOut();
+};
+
+$('profileOpen').onclick = function() { if (currentProfile) openProfileView(currentProfile, true); };
+$('profileClose').onclick = function() { $('profileModal').classList.add('hidden'); };
+$('profileSave').onclick = function() {
+    var username = $('profileUsername').value.trim().toLowerCase();
+    var displayName = $('profileDisplayName').value.trim() || username;
+    if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+        $('profileNotice').textContent = 'Юзернейм: 3–20 символов.';
+        return;
+    }
+    db.from('profiles').update({username: username, display_name: displayName}).eq('user_id', currentUser.id).select('*').single().then(function(res) {
+        if (res.error) throw res.error;
+        currentProfile = res.data;
+        updateMyLabel();
+        refreshPeople();
+        $('profileModal').classList.add('hidden');
+        toast('Сохранено');
+    }).catch(function(err) {
+        $('profileNotice').textContent = friendlyError(err);
+    });
+};
+
+function openProfileView(p, editing) {
+    $('profileTitle').textContent = editing ? 'Мой профиль' : 'Профиль';
+    $('profileNameHeading').innerHTML = escapeHtml(displayOf(p)) + creatorBadge(p);
+    $('profileCreatedLine').textContent = '@' + usernameOf(p);
+    $('profilePreview').innerHTML = p.avatar_url ? '<img src="' + escapeHtml(p.avatar_url) + '" alt="">' : escapeHtml(initials(displayOf(p)));
+    $('creatorCard').classList.toggle('hidden', !p.is_creator);
+    $('profileReadOnly').classList.toggle('hidden', editing);
+    $('profileEditor').classList.toggle('hidden', !editing);
+    $('profileDisplayRead').textContent = displayOf(p);
+    $('profileUsernameRead').textContent = '@' + usernameOf(p);
+    $('profileStatusRead').innerHTML = statusHTML(p);
+    if (editing) {
+        $('profileDisplayName').value = p.display_name || p.username;
+        $('profileUsername').value = p.username;
+        $('profileNotice').textContent = '';
+    }
+    $('profileModal').classList.remove('hidden');
+}
+
+$('adminOpen').onclick = function() {
+    if (!isAdmin) return;
+    $('adminModal').classList.remove('hidden');
+    loadAdminUsers();
+};
+$('adminClose').onclick = function() { $('adminModal').classList.add('hidden'); };
+
+function loadAdminUsers() {
+    db.rpc('admin_list_users').then(function(res) {
+        if (res.error) throw res.error;
+        adminRows = res.data || [];
+        renderAdminUsers();
+    }).catch(function(e) { $('adminNotice').textContent = friendlyError(e); });
+}
+
+function renderAdminUsers() {
+    var q = $('adminSearch').value.trim().toLowerCase();
+    var html = '';
+    for (var i = 0; i < adminRows.length; i++) {
+        var p = adminRows[i];
+        if (q && String(p.username || '').toLowerCase().indexOf(q) === -1 && String(p.email || '').toLowerCase().indexOf(q) === -1) continue;
+        var mine = (p.user_id === currentUser.id);
+        html += '<div class="adminUser"><div class="who"><strong>' + escapeHtml(p.display_name || p.username) + '</strong><div class="status">@' + escapeHtml(p.username) + '</div></div>' +
+            '<div class="actions">' + (mine ? '<span class="status">Это вы</span>' : '<button class="btn btnDanger" data-ban="' + p.user_id + '">' + (p.is_banned ? 'Разбан' : 'Бан') + '</button>') + '</div></div>';
+    }
+    $('adminUsers').innerHTML = html || '<div class="empty">Никого не найдено</div>';
+    var btns = $('adminUsers').querySelectorAll('[data-ban]');
+    for (var b = 0; b < btns.length; b++) {
+        btns[b].onclick = function(uid, isBanned) {
+            return function() {
+                db.rpc('admin_set_moderation', {
+                    p_user_id: uid,
+                    p_is_banned: !isBanned,
+                    p_muted_until: null,
+                    p_reason: 'Админ'
+                }).then(function() { loadAdminUsers(); toast('Готово'); });
+            };
+        }(btns[b].getAttribute('data-ban'), false);
+    }
+}
+$('adminSearch').oninput = renderAdminUsers;
+
+// Запуск с защитой от зависания сети (таймаут 3 секунды)
+(function boot() {
+    if (!window.supabase || !window.supabase.createClient) {
+        authNotice('Ошибка: библиотека Supabase не загрузилась.', true);
+        showAuth();
+        return;
+    }
+    try {
+        db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+            auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+        });
+        db.auth.onAuthStateChange(function(event, session) {
+            setTimeout(function() { afterLogin(session ? session.user : null); }, 0);
+        });
+
+        // Защитный таймаут 3 секунды, чтобы сеть не вешала интерфейс
+        var timeoutId = setTimeout(function() {
+            showAuth();
+            authNotice('Готово к работе (сеть Supabase медленная или заблокирована).');
+        }, 3000);
+
+        db.auth.getSession().then(function(res) {
+            clearTimeout(timeoutId);
+            if (res.error) throw res.error;
+            if (res.data && res.data.session) {
+                afterLogin(res.data.session.user);
+            } else {
+                showAuth();
+            }
+        }).catch(function(e) {
+            clearTimeout(timeoutId);
+            authNotice('Нет связи с сервером. Вход доступен в офлайн-режиме.', true);
+            showAuth();
+        });
+    } catch(err) {
+        authNotice(friendlyError(err), true);
         showAuth();
     }
-}catch(e){
-    console.error('Boot error:', e);
-    authNotice('ОШИБКА: ' + friendlyError(e), true);
-    showAuth(); // Принудительно открываем форму входа, даже если произошел сбой
-}
 })();
 </script>  
 </body>
