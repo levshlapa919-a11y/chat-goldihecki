@@ -190,7 +190,6 @@ function setMode(mode) {
     authNotice(mode === 'login' ? 'Войди, чтобы открыть личные переписки.' : 'Создай аккаунт и выбери свободный юзернейм.');
 }
 
-// Принудительно вешаем обработчики вкладок сразу
 $('loginTab').onclick = function() { setMode('login'); };
 $('signupTab').onclick = function() { setMode('signup'); };
 
@@ -429,7 +428,7 @@ function renderPeople() {
 }
 
 $('userSearch').oninput = renderPeople;
-$('newChatHint').onclick = function() { $('userSearch'].focus(); renderPeople(); };
+$('newChatHint').onclick = function() { $('userSearch').focus(); renderPeople(); };
 $('refreshBtn').onclick = function() {
     refreshPeople().then(function() {
         if (activeConversation) loadMessages(true);
@@ -709,10 +708,9 @@ $('adminSearch').oninput = renderAdminUsers;
             setTimeout(function() { afterLogin(session ? session.user : null); }, 0);
         });
 
-        // Защитный таймаут 3 секунды, чтобы сеть не вешала интерфейс
         var timeoutId = setTimeout(function() {
             showAuth();
-            authNotice('Готово к работе (сеть Supabase медленная или заблокирована).');
+            authNotice('Готов к работе.');
         }, 3000);
 
         db.auth.getSession().then(function(res) {
@@ -725,7 +723,6 @@ $('adminSearch').oninput = renderAdminUsers;
             }
         }).catch(function(e) {
             clearTimeout(timeoutId);
-            authNotice('Нет связи с сервером. Вход доступен в офлайн-режиме.', true);
             showAuth();
         });
     } catch(err) {
