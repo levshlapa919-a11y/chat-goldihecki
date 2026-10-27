@@ -51,7 +51,7 @@ label{display:block;font-size:12px;color:#c7c4bc;margin:13px 0 6px}
 <label for="password">Пароль</label><input class="field" id="password" type="password" autocomplete="current-password" required minlength="6" placeholder="Минимум 6 символов">    
 <button id="authSubmit" class="btn btnGold btnFull" type="submit">Войти в аккаунт</button>    
 </form>    
-<div id="authNotice" class="notice" aria-live="polite">Подключение к серверу…</div><p class="muted small">Личные аккаунты, отдельные диалоги и уникальные юзернеймы.</p>    
+<div id="authNotice" class="notice" aria-live="polite">Инициализация…</div><p class="muted small">Личные аккаунты, отдельные диалоги и уникальные юзернеймы.</p>    
 </section></div>  
 
 <div id="app" class="app hidden">    
@@ -80,7 +80,6 @@ label{display:block;font-size:12px;color:#c7c4bc;margin:13px 0 6px}
 
 <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>  
 
-<!-- Заменено на unpkg CDN для надежной загрузки на мобильных -->
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>  
 <script>    
 'use strict';    
@@ -403,22 +402,27 @@ await refreshPeople();await loadAdminUsers();notice.textContent='Действи�
 }catch(e){notice.textContent=friendlyError(e);toast(friendlyError(e),true)}
 }
 
-/* Запуск */
+/* Запуск с подробной диагностикой на экране */
 (async function boot(){
-updateNotifyButton();
-if(!window.supabase?.createClient){
-    authNotice('Не загрузилась библиотека Supabase. Проверь интернет.', true);
-    setConnection('Ошибка загрузки библиотеки');
-    showAuth();
-    return;
-}
 try{
+    $('authNotice').textContent = 'Шаг 1: Проверка настроек уведомлений…';
+    updateNotifyButton();
+
+    $('authNotice').textContent = 'Шаг 2: Проверка библиотеки Supabase…';
+    if(!window.supabase?.createClient){
+        throw new Error('Библиотека Supabase не загрузилась. Проверь интернет или сеть.');
+    }
+    
+    $('authNotice').textContent = 'Шаг 3: Подключение к базе данных…';
     db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
     });
     
-    db.auth.onAuthStateChange((_event, session) => setTimeout(() => afterLogin(session?.user || null), 0));
+    db.auth.onAuthStateChange((_event, session) => {
+        setTimeout(() => afterLogin(session?.user || null), 0);
+    });
 
+    $('authNotice').textContent = 'Шаг 4: Проверка активной сессии…';
     const sessionPromise = db.auth.getSession();
     const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Превышено время ожидания ответа от Supabase')), 8000)
@@ -428,14 +432,15 @@ try{
     if(error) throw error;
     
     if(data.session){
+        $('authNotice').textContent = 'Вход выполнен, загрузка чатов…';
         await afterLogin(data.session.user);
     } else {
         showAuth();
     }
 }catch(e){
     console.error('Boot error:', e);
-    authNotice(friendlyError(e), true);
-    showAuth();
+    authNotice('ОШИБКА: ' + friendlyError(e), true);
+    showAuth(); // Принудительно открываем форму входа, даже если произошел сбой
 }
 })();
 </script>  
