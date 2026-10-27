@@ -1,269 +1,768 @@
 
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#101114">
-<title>Чат Голдичечки</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-:root{color-scheme:dark;--bg:#101114;--panel:#191a20;--panel2:#22232a;--gold:#e4bd68;--text:#f4f1e9;--muted:#9b9ba5;--line:#34343d}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,Arial,sans-serif;min-height:100vh}
-button,input,textarea{font:inherit}
-button{cursor:pointer}
-button:disabled{opacity:.5;cursor:wait}
-.shell{max-width:980px;margin:auto;padding:24px 16px 50px}
-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0 24px;border-bottom:1px solid var(--line);margin-bottom:24px}
-.brand{display:flex;align-items:center;gap:12px}
-.logo{display:grid;place-items:center;width:46px;height:46px;border:1px solid #8f7138;border-radius:13px;color:var(--gold);font-weight:900;font-size:23px}
-.brand h1{font-size:20px;margin:0}
-.brand p{margin:2px 0 0;color:var(--muted);font-size:12px}
-.pill{border:1px solid #5b4a2d;color:var(--gold);border-radius:30px;padding:6px 11px;font-size:12px}
-.layout{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:18px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;min-width:0;margin-bottom:16px}
-h2{font-size:18px;margin:0 0 8px}
-.sub{color:var(--muted);margin:0 0 20px;font-size:13px}
-.field{margin:14px 0}
-label{display:block;color:#c7c5c0;font-size:13px;margin-bottom:7px}
-input,textarea{width:100%;border:1px solid var(--line);border-radius:11px;background:#111216;color:var(--text);padding:13px;outline:none}
-input:focus,textarea:focus{border-color:var(--gold)}
-textarea{resize:vertical;min-height:52px;max-height:180px}
-.btn{border:0;border-radius:11px;padding:12px 16px;background:var(--gold);color:#17130b;font-weight:750}
-.btn.secondary{background:var(--panel2);border:1px solid var(--line);color:var(--text)}
-.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}
-.actions .btn{flex:1}
-.hidden{display:none!important}
-#status{padding:12px 14px;border-radius:10px;background:#202127;color:#d5d2ca;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;margin-top:18px}
-#status.error{color:#ff9292;border:1px solid #65383b}
-#status.success{color:var(--gold)}
-.chathead{display:flex;justify-content:space-between;align-items:center;gap:12px}
-#messages{margin:18px 0;display:flex;flex-direction:column;gap:10px;min-height:140px;max-height:48vh;overflow:auto;padding:4px}
-.msg{padding:12px 14px;background:var(--panel2);border:1px solid #30313a;border-radius:12px;overflow-wrap:anywhere}
-.msg b{color:var(--gold);font-size:13px}
-.msg .body{margin-top:5px;white-space:pre-wrap}
-.msg time{display:block;margin-top:7px;color:var(--muted);font-size:11px}
-.composer{display:flex;gap:9px}
-.composer textarea{flex:1;min-width:0}
-.side{display:flex;flex-direction:column;gap:0}
-.stat{padding:13px 0;border-bottom:1px solid var(--line)}
-.stat strong{display:block;color:var(--gold);font-size:17px}
-.stat span{color:var(--muted);font-size:12px}
-.admin{border-color:#6e5935}
-.admin h2{color:var(--gold)}
-.foot{text-align:center;color:#696a74;font-size:12px;margin-top:24px}
-@media(max-width:700px){.layout{grid-template-columns:1fr}.shell{padding:12px}.card{padding:17px}header{padding:10px 0 18px}.brand h1{font-size:17px}#messages{max-height:45vh}}
-@media(max-width:390px){.pill{font-size:10px;padding:5px 7px}.composer{flex-direction:column}.composer button{width:100%}}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101010">
+  <title>Goldihecki — чат</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0b0d;
+      --panel: #151518;
+      --gold: #e0b85b;
+      --gold2: #f5d98d;
+      --text: #f5f2e9;
+      --muted: #a7a3a0;
+      --line: #343136;
+      --danger: #ff7777;
+      --ok: #a5e1b0;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: radial-gradient(ellipse at top, #242016 0, #0b0b0d 48%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      padding: 18px 12px calc(18px + env(safe-area-inset-bottom));
+      display: flex;
+      justify-content: center;
+    }
+
+    button, input, textarea { font: inherit; }
+
+    button {
+      cursor: pointer;
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-weight: 750;
+      background: linear-gradient(135deg, var(--gold2), var(--gold));
+      color: #17130a;
+      min-height: 44px;
+    }
+
+    button:disabled { opacity: .55; cursor: not-allowed; }
+
+    .app { width: min(100%, 720px); margin: auto; }
+
+    .brand { text-align: center; margin: 5px 0 22px; }
+
+    .brandMark {
+      display: inline-grid;
+      place-items: center;
+      width: 54px;
+      height: 54px;
+      border: 1px solid #896b2d;
+      border-radius: 17px;
+      color: var(--gold2);
+      font-weight: 900;
+      font-size: 25px;
+      box-shadow: 0 0 26px #d0a13b18;
+    }
+
+    .brand h1 {
+      font-size: clamp(25px, 6vw, 34px);
+      letter-spacing: 1.5px;
+      margin: 9px 0 2px;
+    }
+
+    .brand p { margin: 0; color: var(--muted); font-size: 14px; }
+
+    .card {
+      background: linear-gradient(180deg, #19191d, #121214);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: clamp(16px, 4vw, 24px);
+      box-shadow: 0 20px 55px #0006;
+    }
+
+    .cardTitle { margin: 0 0 5px; font-size: 21px; }
+
+    .sub {
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .field { display: grid; gap: 7px; margin: 14px 0; }
+    .field label { font-size: 13px; color: #d8d1c2; }
+
+    .field input {
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid #3b3835;
+      background: #0d0d0f;
+      border-radius: 12px;
+      padding: 12px 14px;
+      color: var(--text);
+      outline: none;
+    }
+
+    .field input:focus, .composer textarea:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px #e0b85b20;
+    }
+
+    .linkBtn {
+      background: transparent;
+      color: var(--gold2);
+      border: 1px solid #66532d;
+    }
+
+    .hidden { display: none !important; }
+
+    .notice {
+      display: none;
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin: 0 0 14px;
+      font-size: 14px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .notice.show { display: block; }
+    .notice.error { background: #3c1e21; border: 1px solid #79383d; color: #ffd9dc; }
+    .notice.info { background: #28251d; border: 1px solid #66532d; color: #f4dfad; }
+    .notice.ok { background: #17291d; border: 1px solid #345c3d; color: #d3f6d9; }
+
+    .chatHead {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .chatHead h2 { margin: 0; font-size: 21px; }
+    .online { font-size: 12px; color: var(--ok); margin-top: 4px; }
+    .smallBtn { min-height: 38px; padding: 8px 11px; font-size: 13px; }
+
+    .role {
+      display: inline-block;
+      border: 1px solid #66532d;
+      border-radius: 99px;
+      padding: 4px 8px;
+      color: var(--gold2);
+      font-size: 11px;
+      margin-top: 7px;
+    }
+
+    .messages {
+      height: min(53vh, 520px);
+      min-height: 260px;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      background: #0b0b0d;
+      border-radius: 15px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      scroll-behavior: smooth;
+    }
+
+    .empty {
+      margin: auto;
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+      padding: 30px 12px;
+    }
+
+    .msg {
+      max-width: 92%;
+      align-self: flex-start;
+      background: #1b1b20;
+      border: 1px solid #302e31;
+      border-radius: 4px 15px 15px 15px;
+      padding: 10px 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .msg.mine {
+      align-self: flex-end;
+      background: #292315;
+      border-color: #655027;
+      border-radius: 15px 4px 15px 15px;
+    }
+
+    .msgTop {
+      display: flex;
+      gap: 10px;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+
+    .msgName { font-weight: 800; color: var(--gold2); font-size: 13px; }
+    .msgTime { font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+    .msgText {
+      white-space: pre-wrap;
+      line-height: 1.45;
+      font-size: 15px;
+      overflow-wrap: anywhere;
+    }
+
+    .composer {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      align-items: flex-end;
+    }
+
+    .composer textarea {
+      flex: 1;
+      resize: vertical;
+      min-height: 48px;
+      max-height: 140px;
+      border: 1px solid #3b3835;
+      border-radius: 12px;
+      background: #0d0d0f;
+      padding: 12px;
+      color: var(--text);
+      font: inherit;
+      outline: none;
+    }
+
+    .composer button { min-height: 48px; }
+
+    .footer {
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+      margin: 14px 0 0;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 440px) {
+      body { padding: 10px 8px calc(10px + env(safe-area-inset-bottom)); }
+      .brand { margin-bottom: 15px; }
+      .card { border-radius: 17px; padding: 15px; }
+      .messages { height: 52vh; min-height: 240px; }
+      .composer { gap: 6px; }
+      .composer button { padding: 10px 12px; }
+      .chatHead h2 { font-size: 19px; }
+    }
+  </style>
 </head>
 <body>
-<div class="shell">
-<header>
-  <div class="brand">
-    <div class="logo">G</div>
-    <div><h1>Чат Голдичечки</h1><p>ПРИВАТНОЕ ПРОСТРАНСТВО</p></div>
-  </div>
-  <span class="pill">GOLD EDITION</span>
-</header>
+  <main class="app">
+    <header class="brand">
+      <div class="brandMark">G</div>
+      <h1>GOLDIHECKI</h1>
+      <p>Твой чат · тёмный стиль и золотые акценты</p>
+    </header>
 
-<div class="layout">
-<main>
-  <section class="card" id="auth">
-    <h2>Добро пожаловать</h2>
-    <p class="sub">Войди в аккаунт или создай новый.</p>
-    <form id="authForm">
-      <div class="field"><label for="email">Электронная почта</label><input id="email" type="email" autocomplete="email" placeholder="name@example.com" required></div>
-      <div class="field"><label for="password">Пароль</label><input id="password" type="password" autocomplete="current-password" minlength="6" placeholder="Минимум 6 символов" required></div>
-      <div class="actions">
-        <button class="btn" id="login" type="submit">Войти</button>
-        <button class="btn secondary" id="register" type="button">Регистрация</button>
+    <section id="authCard" class="card">
+      <div id="noticeAuth" class="notice" role="status" aria-live="polite"></div>
+      <h2 id="authTitle" class="cardTitle">С возвращением</h2>
+      <p id="authSub" class="sub">Войди в аккаунт, чтобы открыть общий чат.</p>
+
+      <form id="authForm">
+        <div class="field">
+          <label for="email">Электронная почта</label>
+          <input id="email" type="email" autocomplete="email" required maxlength="254" placeholder="you@example.com">
+        </div>
+        <div class="field">
+          <label for="password">Пароль</label>
+          <input id="password" type="password" autocomplete="current-password" required minlength="6" placeholder="Не менее 6 символов">
+        </div>
+        <button id="authSubmit" type="submit" style="width:100%">Войти</button>
+      </form>
+
+      <div style="height:10px"></div>
+      <button id="toggleMode" type="button" class="linkBtn" style="width:100%">Создать аккаунт</button>
+      <p class="footer">Не отправляй никому пароль от своего аккаунта.</p>
+    </section>
+
+    <section id="chatCard" class="card hidden">
+      <div id="noticeChat" class="notice" role="status" aria-live="polite"></div>
+      <div class="chatHead">
+        <div>
+          <h2>Общий чат</h2>
+          <div id="connectionState" class="online">Подключение…</div>
+          <div id="roleBadge" class="role hidden">АДМИНИСТРАТОР</div>
+        </div>
+        <button id="signOut" class="linkBtn smallBtn" type="button">Выйти</button>
       </div>
-    </form>
-  </section>
 
-  <section class="card hidden" id="chat">
-    <div class="chathead"><div><h2>Общий чат</h2><p class="sub" style="margin:4px 0 0">Сообщения участников</p></div><button class="btn secondary" id="logout" type="button">Выйти</button></div>
-    <div id="messages" aria-live="polite">Загружаю сообщения…</div>
-    <form id="sendForm" class="composer">
-      <textarea id="message" maxlength="1000" rows="2" placeholder="Написать сообщение…" required></textarea>
-      <button class="btn" id="send" type="submit">Отправить</button>
-    </form>
-    <button class="btn secondary" id="refresh" type="button" style="width:100%;margin-top:10px">Обновить сообщения</button>
-  </section>
+      <div id="messages" class="messages" aria-live="polite">
+        <div class="empty">Загружаю сообщения…</div>
+      </div>
 
-  <section class="card admin hidden" id="admin">
-    <h2>Панель администратора</h2>
-    <p>Роль администратора подтверждена базой данных.</p>
-    <p class="sub">Удаление сообщений, мут и бан требуют отдельных защищённых серверных команд и здесь пока не включены.</p>
-  </section>
+      <form id="sendForm" class="composer">
+        <textarea id="messageInput" maxlength="1000" rows="1" placeholder="Напиши сообщение…" aria-label="Текст сообщения" required></textarea>
+        <button id="sendButton" type="submit">Отправить</button>
+      </form>
 
-  <div id="status" role="status" aria-live="polite">Подключение…</div>
-</main>
+      <p class="footer">Сообщения обновляются автоматически. Если загрузка не удалась, здесь появится причина.</p>
+    </section>
+  </main>
 
-<aside class="side">
-  <section class="card">
-    <h2>Информация</h2>
-    <div class="stat"><strong>GOLD</strong><span>Тёмная тема с золотом</span></div>
-    <div class="stat"><strong>Аккаунт</strong><span>Вход через Supabase</span></div>
-    <div class="stat"><strong>Общий чат</strong><span>Обмен сообщениями</span></div>
-  </section>
-  <section class="card">
-    <h2>Правила</h2>
-    <p class="sub" style="margin-bottom:0">Уважай участников. Не отправляй пароли, секретные ключи и личные данные.</p>
-  </section>
-</aside>
-</div>
-<div class="foot">Чат Голдичечки · GOLD EDITION</div>
-</div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    'use strict';
 
-<script>
-(() => {
-'use strict';
+    const SUPABASE_URL = 'https://bkzvoktchnxidoeaklca.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_KiTpU3ATB2S7g4YCtac2fw_34-spY_p';
 
-const SUPABASE_URL='https://bkzvoktchnxidoeaklca.supabase.co';
-const SUPABASE_KEY='sb_publishable_KiTpU3ATB2S7g4YCtac2fw_34-spY_p';
-const $=id=>document.getElementById(id);
-let db=null,currentUser=null,busy=false;
+    const $ = (id) => document.getElementById(id);
 
-function status(message,type=''){
-  $('status').textContent=message;
-  $('status').className=type;
-}
-function explain(error){
-  const m=error?.message||String(error||'Неизвестная ошибка');
-  if(/invalid api key|api key/i.test(m))
-    return 'Supabase отклонил API-ключ. Проверь Publishable key в настройках своего проекта: новый дизайн не может исправить неподходящий ключ.';
-  if(/failed to fetch|networkerror|load failed/i.test(m))
-    return 'Нет соединения с Supabase. Проверь интернет, VPN и доступность сервиса.';
-  if(/invalid login credentials/i.test(m))
-    return 'Неверная почта или пароль. Проверь данные или зарегистрируйся.';
-  if(/email not confirmed/i.test(m))
-    return 'Подтверди почту по ссылке из письма, затем войди.';
-  return m;
-}
-function report(e){status(explain(e),'error')}
-function setBusy(v){
-  busy=v;
-  ['login','register','send','logout','refresh'].forEach(id=>$(id).disabled=v);
-}
-function showUser(user){
-  currentUser=user||null;
-  $('auth').classList.toggle('hidden',!!currentUser);
-  $('chat').classList.toggle('hidden',!currentUser);
-  $('admin').classList.add('hidden');
-}
-async function register(){
-  if(busy)return;
-  const email=$('email').value.trim(),password=$('password').value;
-  if(!email||password.length<6){status('Введи почту и пароль минимум из 6 символов.','error');return}
-  setBusy(true);
-  try{
-    const {data,error}=await db.auth.signUp({email,password});
-    if(error)throw error;
-    if(data.session&&data.user){
-      await updateUI(data.user);
-      status('Регистрация успешна.','success');
-    }else{
-      status('Регистрация создана. Если требуется подтверждение почты, проверь письмо и затем войди.','success');
+    const authCard = $('authCard');
+    const chatCard = $('chatCard');
+    const authForm = $('authForm');
+    const authTitle = $('authTitle');
+    const authSub = $('authSub');
+    const authSubmit = $('authSubmit');
+    const toggleMode = $('toggleMode');
+    const emailInput = $('email');
+    const passwordInput = $('password');
+    const messagesBox = $('messages');
+    const messageInput = $('messageInput');
+    const sendButton = $('sendButton');
+    const connectionState = $('connectionState');
+    const roleBadge = $('roleBadge');
+
+    let db = null;
+    let currentUser = null;
+    let isRegisterMode = false;
+    let sending = false;
+    let pollTimer = null;
+    let currentChannel = null;
+    let lastRenderedSignature = '';
+    let lastLoadError = '';
+
+    function showNotice(targetId, text, kind = 'info') {
+      const node = $(targetId);
+      node.textContent = text;
+      node.className = 'notice show ' + kind;
     }
-  }catch(e){report(e)}finally{setBusy(false)}
-}
-async function login(e){
-  if(e)e.preventDefault();
-  if(busy)return;
-  const email=$('email').value.trim(),password=$('password').value;
-  if(!email||!password){status('Введи почту и пароль.','error');return}
-  setBusy(true);
-  try{
-    const {data,error}=await db.auth.signInWithPassword({email,password});
-    if(error)throw error;
-    await updateUI(data.user);
-    status('Вход выполнен.','success');
-  }catch(e){report(e)}finally{setBusy(false)}
-}
-async function updateUI(user){
-  showUser(user);
-  if(!user)return;
-  try{
-    const {data,error}=await db.from('chat_roles').select('role').eq('user_id',user.id).maybeSingle();
-    if(error)throw error;
-    if(data?.role==='admin')$('admin').classList.remove('hidden');
-  }catch(e){status('Вход выполнен, но роль администратора проверить не удалось: '+explain(e),'error')}
-  await loadMessages();
-}
-async function loadMessages(){
-  if(!currentUser||busy)return;
-  $('messages').textContent='Загружаю сообщения…';
-  try{
-    const {data,error}=await db.from('messages').select('name,content,created_at').order('created_at',{ascending:true}).limit(100);
-    if(error)throw error;
-    $('messages').replaceChildren();
-    if(!data?.length){$('messages').textContent='Пока сообщений нет. Напиши первым.';return}
-    for(const msg of data){
-      const item=document.createElement('article');item.className='msg';
-      const name=document.createElement('b');name.textContent=msg.name||'Участник';
-      const body=document.createElement('div');body.className='body';body.textContent=msg.content||'';
-      item.append(name,body);
-      if(msg.created_at){
-        const time=document.createElement('time'),date=new Date(msg.created_at);
-        time.textContent=Number.isNaN(date.getTime())?'':date.toLocaleString('ru-RU');
-        item.append(time);
+
+    function hideNotice(targetId) {
+      const node = $(targetId);
+      node.textContent = '';
+      node.className = 'notice';
+    }
+
+    function setConnection(text, good = true) {
+      connectionState.textContent = text;
+      connectionState.style.color = good ? 'var(--ok)' : 'var(--danger)';
+    }
+
+    function friendlyError(error, context = 'load') {
+      const message = String(error?.message || error || 'Неизвестная ошибка');
+      const lower = message.toLowerCase();
+
+      if (
+        lower.includes('failed to fetch') ||
+        lower.includes('networkerror') ||
+        lower.includes('load failed') ||
+        lower.includes('network request failed')
+      ) {
+        return 'Телефон не смог соединиться с сервером Supabase. Это может быть проблема сети/DNS или блокировка соединения. Код: ' + message;
       }
-      $('messages').append(item);
+
+      if (lower.includes('invalid api key') || lower.includes('no api key')) {
+        return 'Supabase отклонил API-ключ. Проверь, что в index.html указан именно Publishable key проекта. Код: ' + message;
+      }
+
+      if (
+        lower.includes('jwt') ||
+        lower.includes('token') ||
+        lower.includes('unauthorized') ||
+        lower.includes('401')
+      ) {
+        return 'Сессия могла истечь. Нажми «Выйти» и войди снова. Код: ' + message;
+      }
+
+      if (
+        lower.includes('permission denied') ||
+        lower.includes('row-level security') ||
+        lower.includes('rls') ||
+        lower.includes('403')
+      ) {
+        return 'База отклонила запрос по правилам доступа. Для чтения сообщений нужен активный вход и разрешающая SELECT-политика. Код: ' + message;
+      }
+
+      if (context === 'load') {
+        return 'Не получилось загрузить сообщения. Проверь соединение и правила доступа. Код: ' + message;
+      }
+
+      return message;
     }
-    $('messages').scrollTop=$('messages').scrollHeight;
-  }catch(e){$('messages').textContent='Не удалось загрузить сообщения.';report(e)}
-}
-async function sendMessage(e){
-  e.preventDefault();
-  if(busy||!currentUser)return;
-  const content=$('message').value.trim();
-  if(!content)return;
-  setBusy(true);
-  try{
-    const name=(currentUser.email||'Участник').split('@')[0].slice(0,30);
-    const {error}=await db.from('messages').insert({name,content:content.slice(0,1000)});
-    if(error)throw error;
-    $('message').value='';
-    status('Сообщение отправлено.','success');
-    await loadMessages();
-  }catch(e){report(e)}finally{setBusy(false)}
-}
-async function logout(){
-  if(busy)return;
-  setBusy(true);
-  try{
-    const {error}=await db.auth.signOut();
-    if(error)throw error;
-    showUser(null);
-    $('messages').replaceChildren();
-    status('Ты вышел из аккаунта.','success');
-  }catch(e){report(e)}finally{setBusy(false)}
-}
-async function init(){
-  if(!window.supabase){
-    status('Библиотека Supabase не загрузилась. Проверь соединение с интернетом.','error');
-    return;
-  }
-  try{
-    db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-    const {data,error}=await db.auth.getSession();
-    if(error)throw error;
-    if(data.session?.user)await updateUI(data.session.user);
-    else status('Готово. Войди или зарегистрируйся.','success');
-    db.auth.onAuthStateChange((_event,session)=>{
-      if(session?.user&&session.user.id!==currentUser?.id)updateUI(session.user);
+
+    function setAuthMode(register) {
+      isRegisterMode = register;
+      authTitle.textContent = register ? 'Создать аккаунт' : 'С возвращением';
+      authSub.textContent = register
+        ? 'Зарегистрируйся, чтобы присоединиться к общему чату.'
+        : 'Войди в аккаунт, чтобы открыть общий чат.';
+      authSubmit.textContent = register ? 'Зарегистрироваться' : 'Войти';
+      toggleMode.textContent = register ? 'У меня уже есть аккаунт' : 'Создать аккаунт';
+      passwordInput.autocomplete = register ? 'new-password' : 'current-password';
+      hideNotice('noticeAuth');
+    }
+
+    toggleMode.addEventListener('click', () => setAuthMode(!isRegisterMode));
+
+    function showLoggedOut() {
+      currentUser = null;
+      authCard.classList.remove('hidden');
+      chatCard.classList.add('hidden');
+      roleBadge.classList.add('hidden');
+      stopPolling();
+
+      if (currentChannel && db) {
+        db.removeChannel(currentChannel);
+        currentChannel = null;
+      }
+
+      messagesBox.replaceChildren();
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = 'Войди, чтобы посмотреть сообщения.';
+      messagesBox.appendChild(empty);
+
+      lastRenderedSignature = '';
+    }
+
+    async function applySession(session) {
+      const nextUser = session?.user || null;
+
+      if (!nextUser) {
+        showLoggedOut();
+        return;
+      }
+
+      const userChanged = currentUser?.id !== nextUser.id;
+      currentUser = nextUser;
+      authCard.classList.add('hidden');
+      chatCard.classList.remove('hidden');
+      hideNotice('noticeAuth');
+
+      if (userChanged) {
+        messagesBox.replaceChildren();
+        const loading = document.createElement('div');
+        loading.className = 'empty';
+        loading.textContent = 'Загружаю сообщения…';
+        messagesBox.appendChild(loading);
+
+        lastRenderedSignature = '';
+        await checkAdminRole();
+        await loadMessages();
+      }
+
+      startPolling();
+      setupRealtime();
+    }
+
+    async function checkAdminRole() {
+      roleBadge.classList.add('hidden');
+      if (!currentUser || !db) return;
+
+      try {
+        const { data, error } = await db
+          .from('chat_roles')
+          .select('role')
+          .eq('user_id', currentUser.id)
+          .maybeSingle();
+
+        if (error) return;
+        if (data?.role === 'admin') roleBadge.classList.remove('hidden');
+      } catch (_) {
+        // Ошибка проверки роли не должна блокировать обычный чат.
+      }
+    }
+
+    function renderMessages(rows) {
+      const signature = JSON.stringify(
+        rows.map(m => [m.id ?? null, m.name ?? '', m.content ?? '', m.created_at ?? ''])
+      );
+
+      if (signature === lastRenderedSignature) return;
+
+      const wasNearBottom =
+        messagesBox.scrollHeight - messagesBox.scrollTop - messagesBox.clientHeight < 90;
+
+      lastRenderedSignature = signature;
+      messagesBox.replaceChildren();
+
+      if (!rows.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = 'Пока сообщений нет. Напиши первым!';
+        messagesBox.appendChild(empty);
+        return;
+      }
+
+      for (const item of rows) {
+        const msg = document.createElement('article');
+        msg.className = 'msg' +
+          (item.user_id && item.user_id === currentUser?.id ? ' mine' : '');
+
+        const top = document.createElement('div');
+        top.className = 'msgTop';
+
+        const name = document.createElement('span');
+        name.className = 'msgName';
+        name.textContent = String(item.name || 'Пользователь');
+
+        const time = document.createElement('time');
+        time.className = 'msgTime';
+
+        if (item.created_at) {
+          const date = new Date(item.created_at);
+          if (!Number.isNaN(date.getTime())) {
+            time.dateTime = date.toISOString();
+            time.textContent = date.toLocaleString('ru-RU', {
+              day: '2-digit',
+              month: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+          }
+        }
+
+        top.append(name, time);
+
+        const content = document.createElement('div');
+        content.className = 'msgText';
+        content.textContent = String(item.content ?? '');
+
+        msg.append(top, content);
+        messagesBox.appendChild(msg);
+      }
+
+      if (wasNearBottom) messagesBox.scrollTop = messagesBox.scrollHeight;
+    }
+
+    async function loadMessages() {
+      // Не проверяем sending/busy: отправка не должна блокировать чтение.
+      if (!currentUser || !db) return;
+
+      setConnection('Загружаю сообщения…', true);
+
+      try {
+        const { data, error } = await db
+          .from('messages')
+          .select('*')
+          .order('created_at', { ascending: true })
+          .limit(200);
+
+        if (error) throw error;
+
+        renderMessages(Array.isArray(data) ? data : []);
+        lastLoadError = '';
+        hideNotice('noticeChat');
+        setConnection('Подключено · автообновление', true);
+      } catch (error) {
+        const readable = friendlyError(error, 'load');
+
+        if (readable !== lastLoadError) {
+          showNotice('noticeChat', readable, 'error');
+        }
+
+        lastLoadError = readable;
+        setConnection('Сообщения не загрузились', false);
+      }
+    }
+
+    function stopPolling() {
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+    }
+
+    function startPolling() {
+      stopPolling();
+      if (!currentUser) return;
+
+      // Если Realtime недоступен, сообщения всё равно перечитываются раз в 7 секунд.
+      pollTimer = setInterval(() => {
+        if (currentUser && !document.hidden) loadMessages();
+      }, 7000);
+    }
+
+    function setupRealtime() {
+      if (!currentUser || !db || currentChannel) return;
+
+      try {
+        currentChannel = db
+          .channel('goldihecki-messages')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'messages' },
+            () => loadMessages()
+          )
+          .subscribe();
+      } catch (_) {
+        currentChannel = null;
+      }
+    }
+
+    authForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      if (!db) {
+        showNotice(
+          'noticeAuth',
+          'Библиотека Supabase не загрузилась. Проверь интернет и перезагрузи страницу.',
+          'error'
+        );
+        return;
+      }
+
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+
+      authSubmit.disabled = true;
+      authSubmit.textContent = isRegisterMode ? 'Создаю аккаунт…' : 'Вхожу…';
+      hideNotice('noticeAuth');
+
+      try {
+        if (isRegisterMode) {
+          const { data, error } = await db.auth.signUp({ email, password });
+          if (error) throw error;
+
+          if (data.session) {
+            await applySession(data.session);
+          } else {
+            setAuthMode(false);
+            showNotice(
+              'noticeAuth',
+              'Аккаунт создан. Если включено подтверждение почты, открой письмо от Supabase и подтверди адрес, затем войди.',
+              'ok'
+            );
+          }
+        } else {
+          const { data, error } = await db.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+          await applySession(data.session);
+        }
+      } catch (error) {
+        showNotice('noticeAuth', friendlyError(error, 'auth'), 'error');
+      } finally {
+        authSubmit.disabled = false;
+        authSubmit.textContent = isRegisterMode ? 'Зарегистрироваться' : 'Войти';
+      }
     });
-  }catch(e){report(e)}
-}
-$('authForm').addEventListener('submit',login);
-$('register').addEventListener('click',register);
-$('sendForm').addEventListener('submit',sendMessage);
-$('logout').addEventListener('click',logout);
-$('refresh').addEventListener('click',loadMessages);
-init();
-})();
-</script>
+
+    $('signOut').addEventListener('click', async () => {
+      $('signOut').disabled = true;
+
+      try {
+        const { error } = await db.auth.signOut();
+        if (error) throw error;
+        showLoggedOut();
+        showNotice('noticeAuth', 'Ты вышел из аккаунта.', 'info');
+      } catch (error) {
+        showNotice('noticeChat', 'Не удалось выйти: ' + String(error.message || error), 'error');
+      } finally {
+        $('signOut').disabled = false;
+      }
+    });
+
+    $('sendForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const content = messageInput.value.trim();
+      if (!content || !currentUser || sending) return;
+
+      if (content.length > 1000) {
+        showNotice('noticeChat', 'Сообщение слишком длинное: максимум 1000 символов.', 'error');
+        return;
+      }
+
+      sending = true;
+      sendButton.disabled = true;
+      sendButton.textContent = 'Отправка…';
+
+      try {
+        const userName =
+          (currentUser.email || 'пользователь').split('@')[0].slice(0, 30) || 'пользователь';
+
+        const { error } = await db
+          .from('messages')
+          .insert({ name: userName, content });
+
+        if (error) throw error;
+
+        messageInput.value = '';
+        await loadMessages();
+        messagesBox.scrollTop = messagesBox.scrollHeight;
+      } catch (error) {
+        showNotice(
+          'noticeChat',
+          'Сообщение не отправлено. ' + friendlyError(error, 'send'),
+          'error'
+        );
+      } finally {
+        sending = false;
+        sendButton.disabled = false;
+        sendButton.textContent = 'Отправить';
+      }
+    });
+
+    messageInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        $('sendForm').requestSubmit();
+      }
+    });
+
+    async function boot() {
+      if (!window.supabase || !window.supabase.createClient) {
+        showNotice(
+          'noticeAuth',
+          'Не загрузилась библиотека Supabase с CDN. Возможно, сеть блокирует этот адрес. Перезагрузи страницу или попробуй другую сеть.',
+          'error'
+        );
+        setConnection('Библиотека не загрузилась', false);
+        return;
+      }
+
+      try {
+        db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true
+          }
+        });
+
+        const { data, error } = await db.auth.getSession();
+        if (error) throw error;
+
+        await applySession(data.session);
+
+        db.auth.onAuthStateChange((_event, session) => {
+          // Откладываем обработку смены сессии вне callback Supabase.
+          window.setTimeout(() => { applySession(session); }, 0);
+        });
+      } catch (error) {
+        showNotice(
+          'noticeAuth',
+          'Не удалось начать работу с Supabase. ' + friendlyError(error, 'auth'),
+          'error'
+        );
+        setConnection('Ошибка подключения', false);
+      }
+    }
+
+    boot();
+  </script>
 </body>
 </html>
