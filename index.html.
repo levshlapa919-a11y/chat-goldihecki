@@ -405,12 +405,37 @@ await refreshPeople();await loadAdminUsers();notice.textContent='Действи�
 /* Запуск */
 (async function boot(){
 updateNotifyButton();
-if(!window.supabase?.createClient){authNotice('Не загрузилась библиотека Supabase JS. Проверь интернет.',true);setConnection('Не загружена библиотека Supabase');return}
+if(!window.supabase?.createClient){
+    authNotice('Не загрузилась библиотека Supabase JS. Проверь интернет.',true);
+    setConnection('Не загружена библиотека Supabase');
+    return;
+}
 try{
-db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-db.auth.onAuthStateChange((_event,session)=>setTimeout(()=>afterLogin(session?.user||null),0));
-const {data,error}=await db.auth.getSession();if(error)throw error;if(data.session)await afterLogin(data.session.user);else showAuth();
-}catch(e){authNotice(friendlyError(e),true)}
+    db = window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
+        auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
+    });
+    
+    db.auth.onAuthStateChange((_event,session)=>setTimeout(()=>afterLogin(session?.user||null),0));
+
+    // Защита от бесконечного зависания (таймаут 8 секунд)
+    const sessionPromise = db.auth.getSession();
+    const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Превышено время ожидания ответа от Supabase')), 8000)
+    );
+
+    const { data, error } = await Promise.race([sessionPromise, timeoutPromise]);
+    if(error) throw error;
+    
+    if(data.session){
+        await afterLogin(data.session.user);
+    } else {
+        showAuth();
+    }
+}catch(e){
+    console.error('Boot error:', e);
+    authNotice(friendlyError(e), true);
+    showAuth(); // Показываем форму входа даже при ошибке, чтобы интерфейс не зависал
+}
 })();
 </script>  
 </body>
