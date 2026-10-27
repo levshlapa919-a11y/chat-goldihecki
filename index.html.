@@ -80,16 +80,6 @@ label{display:block;font-size:12px;color:#c7c4bc;margin:13px 0 6px}
 
 <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>  
 
-<script>
-window.onerror = function(msg, url, lineNo) {
-  alert("Ошибка JS: " + msg + "\nСтрока: " + lineNo);
-  return false;
-};
-window.addEventListener('unhandledrejection', function(event) {
-  alert("Ошибка подключения: " + (event.reason?.message || JSON.stringify(event.reason)));
-});
-</script>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>  
 <script>    
 'use strict';    
@@ -102,7 +92,7 @@ let people=[],conversations=[],blocks=[],activePerson=null,activeConversation=nu
 let authMode='login',pollTimer=null,presenceTimer=null,toastTimer=null,loadingMessages=false,lastTypingUpdate=0;    
 let adminRows=[],knownMessageIds=new Set(),notificationsEnabled=false;    
 
-const escapeHtml=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&','<':'<','>':'>','&quot;':'"','&#39;':"'"}[c]||c));
+const escapeHtml=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&','\x3c':'&lt;','\x3e':'&gt;','&quot;':'"','&#39;':"'"}[c]||c));
 const usernameOf=p=>p?.username||'пользователь';
 const displayOf=p=>p?.display_name||usernameOf(p);
 const initials=n=>(n||'?').trim().slice(0,1).toUpperCase();
